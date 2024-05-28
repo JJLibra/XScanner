@@ -5,4 +5,6 @@
     <color name="colorAccent">#03DAC5</color>
     <color name="colorqianlan">#11EEEE</color>
     <color name="black">#000000</color>
-\</resources>
+    <color name="toolbar_background">#fff</color>
+    <color name="toolbar_title_background">#2c2c2c</color>
+    \</resources>
