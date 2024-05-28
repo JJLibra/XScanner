@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">LOCK APP</string>
+
+    <!--  组件名  -->
+    <string name="show_data">数据表单</string>
+    <string name="show_visitors">访问日志</string>
+    <string name="reset_data">恢复出厂</string>
+    <string name="lock_dashboard">门锁仪表盘</string>
+    <string name="disconnect">断开连接</string>
+    <string name="lock_status">门锁状态</string>
+    <string name="status_unknown">未知</string>
+
+    <string name="connecting">正在连接中</string>
+    <string name="disconnected">连接失败</string>
+    <string name="no_group_owner">缺少组主</string>
+    <string name="error_message">ERROR: </string>
+</resources>
