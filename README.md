@@ -1,2 +1,2 @@
 # JJLibraScanner
-Just a simple port scanner
+Just a simple port scanner.
