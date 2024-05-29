@@ -2,6 +2,7 @@
 #include "ui_hostscannerwindow.h"
 #include <QDebug>
 #include <QRegularExpression>
+#include <QMutexLocker>
 
 PingWorker::PingWorker(const QString &ip, QObject *parent)
     : QObject(parent), ipAddress(ip), pingProcess(nullptr)
@@ -12,7 +13,7 @@ void PingWorker::startPing()
 {
     pingProcess = new QProcess(this);
     connect(pingProcess, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), this, &PingWorker::processFinished);
-// 针对不同操作系统中的ping命令
+
 #ifdef Q_OS_WIN
     pingProcess->start("ping", QStringList() << "-n" << "1" << "-w" << "1000" << ipAddress); // -w 1000 设置超时时间为1s
 #else
@@ -24,8 +25,6 @@ void PingWorker::processFinished(int exitCode, QProcess::ExitStatus exitStatus)
 {
     QString output = pingProcess->readAllStandardOutput();
     QString error = pingProcess->readAllStandardError();
-    qDebug() << "Ping output for" << ipAddress << ":" << output;
-    qDebug() << "Ping error for" << ipAddress << ":" << error;
 
     QRegularExpression regex("ttl=\\d+", QRegularExpression::CaseInsensitiveOption);
     QRegularExpressionMatch match = regex.match(output);
@@ -34,7 +33,6 @@ void PingWorker::processFinished(int exitCode, QProcess::ExitStatus exitStatus)
     emit pingFinished(ipAddress, isAlive);
     pingProcess->deleteLater();
 }
-
 
 HostScannerWindow::HostScannerWindow(QWidget *parent)
     : QMainWindow(parent),
@@ -66,12 +64,12 @@ void HostScannerWindow::on_startButton_clicked()
         return;
     }
 
-    // 清空之前的结果
+    // 初始化
     ui->resultTextEdit->clear();
+    ui->aliveHostsTextEdit->clear();
     ipList.clear();
     aliveHosts.clear();
     pendingIps.clear();
-
     currentIpIndex = 0;
     activePings = 0;
     totalPings = 0;
@@ -98,9 +96,12 @@ void HostScannerWindow::startPing()
 {
     if (currentIpIndex < ipList.size()) {
         QString ip = ipList[currentIpIndex];
-        currentIpIndex++;
-        activePings++;
-        pendingIps.insert(ip);
+        {
+            QMutexLocker locker(&mutex);
+            currentIpIndex++;
+            activePings++;
+            pendingIps.insert(ip);
+        }
 
         PingWorker *worker = new PingWorker(ip); // 具体操作见 PingWorker 类
         QThread *thread = new QThread;
@@ -119,8 +120,11 @@ void HostScannerWindow::startPing()
 
 void HostScannerWindow::handlePingResult(const QString &ip, bool isAlive)
 {
-    activePings--;
-    pendingIps.remove(ip);
+    {
+        QMutexLocker locker(&mutex);
+        activePings--;
+        pendingIps.remove(ip);
+    }
 
     if (isAlive) {
         ui->resultTextEdit->append(QString("%1 is alive").arg(ip));
@@ -138,6 +142,9 @@ void HostScannerWindow::handlePingResult(const QString &ip, bool isAlive)
 
 void HostScannerWindow::checkCompletion()
 {
+    QMutexLocker locker(&mutex);
+
+    if (activePings < 0) activePings++;
     if (activePings == 0 && pendingIps.isEmpty() && currentIpIndex == totalPings) {
         ui->resultTextEdit->append("网段扫描已完成");
         ui->aliveHostsTextEdit->append("以下主机已开启");

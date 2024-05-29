@@ -41,6 +41,7 @@ void PortScannerWindow::on_startButton_clicked()
     totalPorts = endPort - startPort + 1;
     activeScans = 0;
 
+    ui->resultTextEdit->append("正在扫描...");
     for (int i = 0; i < 20 && currentPort <= endPort; ++i) { // 多线程（20）
         startPortScan(); // 开扫
     }

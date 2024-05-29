@@ -5,6 +5,7 @@
 #include <QProcess>
 #include <QThread>
 #include <QSet>
+#include <QMutex>
 
 namespace Ui {
 class HostScannerWindow;
@@ -51,6 +52,7 @@ private:
     int activePings;
     int totalPings;
     QSet<QString> pendingIps;
+    QMutex mutex;
 
     void startPing();
 };
