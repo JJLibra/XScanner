@@ -6,8 +6,8 @@
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
-    , portScannerWindow(new PortScannerWindow(this))
-    , hostScannerWindow(new HostScannerWindow(this))
+    , portScannerWindow(new PortScannerWindow(this))  //端口扫描
+    , hostScannerWindow(new HostScannerWindow(this))  //扫描存活主机
 {
     ui->setupUi(this);
     connect(ui->scanHostsButton, &QPushButton::clicked, this, &MainWindow::on_scanHostsButton_clicked);

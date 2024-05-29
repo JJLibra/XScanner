@@ -44,12 +44,13 @@ private slots:
 
 private:
     Ui::HostScannerWindow *ui;
+    int threadsNum = 20;
     QStringList ipList;
     QStringList aliveHosts;
     int currentIpIndex;
     int activePings;
-    int totalPings; // 用于跟踪总的 ping 次数
-    QSet<QString> pendingIps; // 用于跟踪仍在进行中的ping请求
+    int totalPings;
+    QSet<QString> pendingIps;
 
     void startPing();
 };
