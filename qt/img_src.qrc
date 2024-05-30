@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/">
+        <file>xxfer.ico</file>
+    </qresource>
+</RCC>

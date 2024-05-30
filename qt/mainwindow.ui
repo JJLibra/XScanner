@@ -19,23 +19,20 @@
    </property>
    <layout class="QVBoxLayout" name="verticalLayout">
     <property name="spacing">
-        <number>5</number>
-    </property>
-    <property name="alignment">
-        <set>Qt::AlignTop</set>
+     <number>5</number>
     </property>
     <item>
-    <spacer name="verticalSpacerTop">
-        <property name="orientation">
-            <enum>Qt::Vertical</enum>
-        </property>
-        <property name="sizeHint" stdset="0">
-            <size>
-                <width>20</width>
-                <height>20</height>
-            </size>
-        </property>
-    </spacer>
+     <spacer name="verticalSpacerTop">
+      <property name="orientation">
+       <enum>Qt::Vertical</enum>
+      </property>
+      <property name="sizeHint">
+       <size>
+        <width>20</width>
+        <height>40</height>
+       </size>
+      </property>
+     </spacer>
     </item>
     <item>
      <widget class="QLabel" name="welcomeLabel">
@@ -57,8 +54,11 @@
         <property name="text">
          <string>网段扫描</string>
         </property>
-        <property name="styleSheet">
-         <string notr="true">margin-top: 10px;</string>
+        <property name="minimumSize">
+         <size>
+          <width>100</width>
+          <height>0</height>
+         </size>
         </property>
        </widget>
       </item>
@@ -67,8 +67,11 @@
         <property name="text">
          <string>端口扫描</string>
         </property>
-        <property name="styleSheet">
-         <string notr="true">margin-top: 5px;</string>
+        <property name="minimumSize">
+         <size>
+          <width>100</width>
+          <height>0</height>
+         </size>
         </property>
        </widget>
       </item>
@@ -79,10 +82,10 @@
       <property name="orientation">
        <enum>Qt::Vertical</enum>
       </property>
-      <property name="sizeHint" stdset="0">
+      <property name="sizeHint">
        <size>
         <width>20</width>
-        <height>40</height>
+        <height>100</height>
        </size>
       </property>
      </spacer>
@@ -94,7 +97,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>400</width>
+     <width>500</width>
      <height>20</height>
     </rect>
    </property>
