@@ -108,19 +108,33 @@ PortScannerWorker::PortScannerWorker(const QString &ip, int port, PortScannerWin
 void PortScannerWorker::startScan()
 {
     bool isOpen = false;
+    qDebug() << "Scanning IP:" << ipAddress << "Port:" << port;
+
+    QHostAddress address(ipAddress);
+    if (address.isNull()) {
+        qDebug() << "Invalid IP Address:" << ipAddress;
+        emit portScanFinished(ipAddress, port, false, "Invalid IP");
+        return;
+    }
+
+    qDebug() << "Resolved IP Address:" << address.toString();
 
     if (scanType == PortScannerWindow::UDPScan) {
         QUdpSocket socket;
-        socket.connectToHost(ipAddress, port);
+        socket.connectToHost(address, port);
         isOpen = socket.waitForConnected(100);
         socket.close();
     } else {
         QTcpSocket socket;
-        socket.connectToHost(ipAddress, port);
-        isOpen = socket.waitForConnected(100);
+        socket.connectToHost(address, port);
+        if (socket.waitForConnected(100)) {
+            isOpen = true;
+            socket.disconnectFromHost();
+        }
         socket.close();
     }
 
+    qDebug() << "Port:" << port << "is" << (isOpen ? "open" : "closed");
     QString service = isOpen ? scannerWindow->identifyService(port) : "";
     emit portScanFinished(ipAddress, port, isOpen, service);
 }
