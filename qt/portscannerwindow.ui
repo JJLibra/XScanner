@@ -86,12 +86,12 @@
            <widget class="QComboBox" name="scanTypeComboBox">
             <item>
              <property name="text">
-              <string>Quick Scan (Common Ports)</string>
+              <string>Quick Scan</string>
              </property>
             </item>
             <item>
              <property name="text">
-              <string>Full Scan (All Ports)</string>
+              <string>Full Scan</string>
              </property>
             </item>
             <item>
@@ -102,6 +102,11 @@
             <item>
              <property name="text">
               <string>UDP Scan</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>SYN Scan</string>
              </property>
             </item>
            </widget>

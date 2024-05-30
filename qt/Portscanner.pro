@@ -20,7 +20,6 @@ FORMS += \
     mainwindow.ui \
     portscannerwindow.ui
 
-# Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
@@ -30,3 +29,5 @@ DISTFILES += \
 
 RESOURCES += \
     img_src.qrc
+
+win32:LIBS += -lws2_32 -liphlpapi
