@@ -6,28 +6,86 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>400</width>
-    <height>300</height>
+    <width>500</width>
+    <height>360</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Network Scanner</string>
+   <string>xxfer Scanner</string>
   </property>
   <widget class="QWidget" name="centralwidget">
+   <property name="styleSheet">
+    <string notr="true">background-color: white;</string>
+   </property>
    <layout class="QVBoxLayout" name="verticalLayout">
+    <property name="spacing">
+        <number>5</number>
+    </property>
+    <property name="alignment">
+        <set>Qt::AlignTop</set>
+    </property>
     <item>
-     <widget class="QPushButton" name="scanHostsButton">
+    <spacer name="verticalSpacerTop">
+        <property name="orientation">
+            <enum>Qt::Vertical</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+            <size>
+                <width>20</width>
+                <height>20</height>
+            </size>
+        </property>
+    </spacer>
+    </item>
+    <item>
+     <widget class="QLabel" name="welcomeLabel">
       <property name="text">
-       <string>扫描网段存活主机</string>
+       <string>欢迎使用</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignCenter</set>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">font-size: 24px; font-weight: bold;</string>
       </property>
      </widget>
     </item>
     <item>
-     <widget class="QPushButton" name="scanPortsButton">
-      <property name="text">
-       <string>扫描特定主机端口开放情况</string>
+     <layout class="QVBoxLayout" name="buttonLayout">
+      <item>
+       <widget class="QPushButton" name="scanHostsButton">
+        <property name="text">
+         <string>网段扫描</string>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">margin-top: 10px;</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="scanPortsButton">
+        <property name="text">
+         <string>端口扫描</string>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">margin-top: 5px;</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <spacer name="verticalSpacerBottom">
+      <property name="orientation">
+       <enum>Qt::Vertical</enum>
       </property>
-     </widget>
+      <property name="sizeHint" stdset="0">
+       <size>
+        <width>20</width>
+        <height>40</height>
+       </size>
+      </property>
+     </spacer>
     </item>
    </layout>
   </widget>
@@ -37,9 +95,27 @@
      <x>0</x>
      <y>0</y>
      <width>400</width>
-     <height>22</height>
+     <height>20</height>
     </rect>
    </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>文件</string>
+    </property>
+   </widget>
+   <widget class="QMenu" name="menuEdit">
+    <property name="title">
+     <string>设置</string>
+    </property>
+   </widget>
+   <widget class="QMenu" name="menuOther">
+    <property name="title">
+     <string>其他</string>
+    </property>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuEdit"/>
+   <addaction name="menuOther"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
  </widget>

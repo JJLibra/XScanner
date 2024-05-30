@@ -43,6 +43,8 @@ HostScannerWindow::HostScannerWindow(QWidget *parent)
 {
     ui->setupUi(this);
     connect(ui->startButton, &QPushButton::clicked, this, &HostScannerWindow::on_startButton_clicked);
+    ui->progressBar->setValue(0);
+    ui->progressBar->setRange(0, 100);  // 进度条的范围从0到100
 }
 
 HostScannerWindow::~HostScannerWindow()
@@ -67,6 +69,7 @@ void HostScannerWindow::on_startButton_clicked()
     // 初始化
     ui->resultTextEdit->clear();
     ui->aliveHostsTextEdit->clear();
+    ui->progressBar->setValue(0);  // 重置进度条
     ipList.clear();
     aliveHosts.clear();
     pendingIps.clear();
@@ -133,11 +136,20 @@ void HostScannerWindow::handlePingResult(const QString &ip, bool isAlive)
         ui->resultTextEdit->append(QString("%1 is not reachable").arg(ip));
     }
 
+    updateProgressBar();  // 更新进度条
+
     if (currentIpIndex < ipList.size()) {
         startPing();
     }
 
     checkCompletion();
+}
+
+void HostScannerWindow::updateProgressBar()
+{
+    int scanned = totalPings - ipList.size() + currentIpIndex;
+    int progress = (scanned * 100) / totalPings;
+    ui->progressBar->setValue(progress);
 }
 
 void HostScannerWindow::checkCompletion()

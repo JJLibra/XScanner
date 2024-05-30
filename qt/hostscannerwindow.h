@@ -42,6 +42,7 @@ private slots:
     void on_startButton_clicked();
     void handlePingResult(const QString &ip, bool isAlive);
     void checkCompletion();
+    void updateProgressBar();
 
 private:
     Ui::HostScannerWindow *ui;
