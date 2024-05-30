@@ -27,8 +27,10 @@ public:
         QuickScan,
         FullScan,
         TCPScan,
-        UDPScan,
-        SYNscan
+        SYNscan,
+        FINscan,
+        ACKscan,
+        UDPScan
     };
 
 private slots:

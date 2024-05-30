@@ -30,4 +30,6 @@ DISTFILES += \
 RESOURCES += \
     img_src.qrc
 
+RC_ICONS = xxfer.ico
+
 win32:LIBS += -lws2_32 -liphlpapi

@@ -3,6 +3,10 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <QDebug>
+#include <QSplashScreen>
+#include <QMovie>
+#include<QGraphicsOpacityEffect>
+#include<QPropertyAnimation>
 
 int main(int argc, char *argv[])
 {
@@ -18,7 +22,14 @@ int main(int argc, char *argv[])
     QMainWindow mainWindow;
     mainWindow.setWindowIcon(QIcon(":/xxfer.ico"));
 
+    //主程序淡入
+    QPropertyAnimation *animation2 = new QPropertyAnimation(&w,"windowOpacity");
+    animation2->setDuration(300);
+    animation2->setStartValue(0);
+    animation2->setEndValue(1);
+    animation2->start();
     w.show();
+
     int result = a.exec();
 
     WSACleanup();

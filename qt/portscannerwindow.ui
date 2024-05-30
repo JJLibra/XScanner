@@ -101,12 +101,22 @@
             </item>
             <item>
              <property name="text">
-              <string>UDP Scan</string>
+              <string>SYN Scan</string>
              </property>
             </item>
             <item>
              <property name="text">
-              <string>SYN Scan</string>
+              <string>FIN Scan</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>ACK Scan</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>UDP Scan</string>
              </property>
             </item>
            </widget>
