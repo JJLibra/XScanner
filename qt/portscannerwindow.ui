@@ -101,17 +101,17 @@
             </item>
             <item>
              <property name="text">
-              <string>SYN Scan</string>
+              <string>TCP-SYN Scan</string>
              </property>
             </item>
             <item>
              <property name="text">
-              <string>FIN Scan</string>
+              <string>TCP-FIN Scan</string>
              </property>
             </item>
             <item>
              <property name="text">
-              <string>ACK Scan</string>
+              <string>TCP-ACK Scan</string>
              </property>
             </item>
             <item>
