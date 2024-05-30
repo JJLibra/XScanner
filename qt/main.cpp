@@ -5,8 +5,9 @@
 #include <QDebug>
 #include <QSplashScreen>
 #include <QMovie>
-#include<QGraphicsOpacityEffect>
-#include<QPropertyAnimation>
+#include <QGraphicsOpacityEffect>
+#include <QPropertyAnimation>
+#include <QFile>
 
 int main(int argc, char *argv[])
 {
@@ -21,6 +22,12 @@ int main(int argc, char *argv[])
 
     QMainWindow mainWindow;
     mainWindow.setWindowIcon(QIcon(":/xxfer.ico"));
+
+    QFile qssFile(":/1.qss");
+    if(qssFile.open(QFile::ReadOnly)){
+        a.setStyleSheet(qssFile.readAll());
+    }
+    qssFile.close();
 
     //主程序淡入
     QPropertyAnimation *animation2 = new QPropertyAnimation(&w,"windowOpacity");
