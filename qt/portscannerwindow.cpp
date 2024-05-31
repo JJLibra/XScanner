@@ -499,31 +499,31 @@ void PortScannerWorker::startScan()
             break;
         }
         case PortScannerWindow::SYNscan: { // SYN 扫描
-            QString localIPAddress = getLocalIPAddress();
-            if (localIPAddress.isEmpty()) {
-                qDebug() << "本地 IP 获取失败";
-                emit portScanFinished(ipAddress, port, false, "Local IP Error", isFiltered);
-                return;
-            }
+//            QString localIPAddress = getLocalIPAddress();
+//            if (localIPAddress.isEmpty()) {
+//                qDebug() << "本地 IP 获取失败";
+//                emit portScanFinished(ipAddress, port, false, "Local IP Error", isFiltered);
+//                return;
+//            }
 
-            struct sockaddr_in source, target;
-            source.sin_family = AF_INET;
-            source.sin_addr.s_addr = inet_addr(localIPAddress.toStdString().c_str());
-            target.sin_family = AF_INET;
-            target.sin_addr.s_addr = inet_addr(ipAddress.toStdString().c_str());
-            target.sin_port = htons(port);
+//            struct sockaddr_in source, target;
+//            source.sin_family = AF_INET;
+//            source.sin_addr.s_addr = inet_addr(localIPAddress.toStdString().c_str());
+//            target.sin_family = AF_INET;
+//            target.sin_addr.s_addr = inet_addr(ipAddress.toStdString().c_str());
+//            target.sin_port = htons(port);
 
-            char packet[4096];
-            memset(packet, 0, 4096);
-            create_syn_packet(packet, &target, &source);
+//            char packet[4096];
+//            memset(packet, 0, 4096);
+//            create_syn_packet(packet, &target, &source);
 
-            if (send_packet(packet, sizeof(struct ip) + sizeof(struct tcphdr), &target)) {
-                qDebug() << "SYN 报文发送成功";
-                isOpen = true;
-            } else {
-                qDebug() << "SYN 报文发送失败";
-            }
-            break;
+//            if (send_packet(packet, sizeof(struct ip) + sizeof(struct tcphdr), &target)) {
+//                qDebug() << "SYN 报文发送成功";
+//                isOpen = true;
+//            } else {
+//                qDebug() << "SYN 报文发送失败";
+//            }
+//            break;
         }
         case PortScannerWindow::ACKscan: {
             // ACK 扫描的逻辑
