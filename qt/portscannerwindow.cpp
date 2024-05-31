@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <QElapsedTimer>
+#include <QFileDialog>
 
 struct ip {
     unsigned char  ip_hl:4;
@@ -83,6 +84,26 @@ PortScannerWindow::PortScannerWindow(QWidget *parent)
 PortScannerWindow::~PortScannerWindow()
 {
     delete ui;
+}
+
+void PortScannerWindow::on_saveLogButton_clicked()
+{
+    QString fileName = QFileDialog::getSaveFileName(this, tr("保存日志"), "", tr("文本文件 (*.txt)"));
+    if (!fileName.isEmpty()) {
+        QFile file(fileName);
+        if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+            QTextStream out(&file);
+            out << "目标 IP: " << ipAddress << "\n";
+            out << "起始端口: " << startPort << "\n";
+            out << "终止端口: " << endPort << "\n";
+            out << "扫描模式: " << ui->scanTypeComboBox->currentText() << "\n\n";
+            out << ui->resultTextEdit->toPlainText();
+            file.close();
+            ui->resultTextEdit->append("日志已成功保存至 " + fileName);
+        } else {
+            ui->resultTextEdit->append("无法保存日志文件。");
+        }
+    }
 }
 
 void PortScannerWindow::populateNetworkInterfaces()

@@ -40,6 +40,7 @@ private slots:
     void handlePortScanResult(const QString &ip, int port, bool isOpen, const QString &service, bool isFiltered);
     void updateProgress(int value);
     void populateNetworkInterfaces();
+    void on_saveLogButton_clicked();
 
 private:
     Ui::PortScannerWindow *ui;
