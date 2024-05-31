@@ -38,6 +38,6 @@ RC_ICONS = logo.ico
 LIBS += -lws2_32
 LIBS += -liphlpapi
 
-INCLUDEPATH += "D:\Tools\github\personal\Projects\XScanner\winpacp_demo\WpdPack/Include"
-LIBS += "-LD:\Tools\github\personal\Projects\XScanner\winpacp_demo\WpdPack/Lib/x64" -lwpcap -lPacket
+INCLUDEPATH += "D:\Tools\github\personal\Projects\XScanner\qt\WpdPack/Include"
+LIBS += "-LD:\Tools\github\personal\Projects\XScanner\qt\WpdPack/Lib/x64" -lwpcap -lPacket
 
