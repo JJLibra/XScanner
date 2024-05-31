@@ -10,6 +10,7 @@
 #include <pcap.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include <QElapsedTimer>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class PortScannerWindow; }
@@ -50,13 +51,14 @@ private:
     int currentPort;
     int totalPorts;
     int activeScans;
-    int threadNum = 40;
+    int threadNum = 50;
     QMap<int, QString> commonPorts;
     ScanType scanType;
     QString selectedInterface;
     int udpFilteredPortNum = 0;
     int openPortNum = 0;
     QList<int> commonPortList; // 常见端口列表
+    QElapsedTimer timer;
 };
 
 class PortScannerWorker : public QObject

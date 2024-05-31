@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <QElapsedTimer>
 
 struct ip {
     unsigned char  ip_hl:4;
@@ -120,8 +121,10 @@ void PortScannerWindow::on_startButton_clicked()
     currentPort = startPort;
     totalPorts = endPort - startPort + 1;
     activeScans = 0; // 活动扫描数
-
     ui->resultTextEdit->append("正在扫描...");
+
+    timer.start();
+
     for (int i = 0; i < threadNum && currentPort <= endPort; ++i) { // 目前使用 40 线程
         startPortScan();
     }
@@ -170,7 +173,8 @@ void PortScannerWindow::handlePortScanResult(const QString &ip, int port, bool i
 
     if (activeScans == 0 && currentPort > endPort) {
         if (scanType == PortScannerWindow::UDPScan) ui->resultTextEdit->append(QString("%1 ports is open|filtered (%2)").arg(udpFilteredPortNum).arg(service));
-        ui->resultTextEdit->append(QString("端口扫描已完成: There are %1 ports open").arg(openPortNum));
+        double elapsed = timer.elapsed();
+        ui->resultTextEdit->append(QString("端口扫描已完成: 共有 %1 个端口开放，耗时 %2 s").arg(openPortNum).arg(elapsed/1000));
     }
 }
 
@@ -410,26 +414,24 @@ bool PortScannerWorker::udp_receive_response(SOCKET sock, struct sockaddr_in *ta
     if (select(0, &readfds, NULL, NULL, &timeout) > 0) {
         int bytes_received = recvfrom(sock, buffer, sizeof(buffer), 0, (struct sockaddr *)&from, &fromlen);
         if (bytes_received > 0) {
-            qDebug() << "Received ICMP message. Raw data:" << QByteArray(buffer, bytes_received).toHex();
+            qDebug() << "ICMP message. Raw data:" << QByteArray(buffer, bytes_received).toHex();
             DECODE_RESULT decode_result;
             if (decode_icmp_response(buffer, bytes_received, decode_result)) {
                 if (decode_result.dwIPaddr.s_addr == target->sin_addr.s_addr && decode_result.port == target->sin_port) {
-                    qDebug() << "Received ICMP port unreachable message for port" << ntohs(target->sin_port);
+                    qDebug() << "收到 ICMP 不可达报文" << ntohs(target->sin_port);
                     isFiltered = false;
                     return false;
-                } else {
-                    qDebug() << "Received ICMP message from different address or port.";
                 }
             } else {
-                qDebug() << "Received unexpected ICMP message.";
+                qDebug() << "没收到 ICMP 报文";
                 isFiltered = true;
             }
         } else {
-            qDebug() << "No response received for UDP packet.";
+            qDebug() << "未收到 UDP 响应包";
             isFiltered = true;
         }
     } else {
-        qDebug() << "UDP select timeout.";
+        qDebug() << "超时";
         isFiltered = true;
     }
     return true;
@@ -504,14 +506,15 @@ void PortScannerWorker::startScan()
         }
         case PortScannerWindow::ACKscan: {
             // ACK 扫描的逻辑
-            //break;
+            break;
         }
         case PortScannerWindow::FINscan: {
             // FIN 扫描的逻辑
-            //break;
+            break;
         }
         case PortScannerWindow::QuickScan: {
 
+            break;
         }
         default: { // TCP 全连接扫描
             QTcpSocket socket;
