@@ -527,15 +527,15 @@ void PortScannerWorker::startScan()
         }
         case PortScannerWindow::ACKscan: {
             // ACK 扫描的逻辑
-            break;
+            //break;
         }
         case PortScannerWindow::FINscan: {
             // FIN 扫描的逻辑
-            break;
+            //break;
         }
         case PortScannerWindow::QuickScan: {
 
-            break;
+            //break;
         }
         default: { // TCP 全连接扫描
             QTcpSocket socket;
