@@ -24,7 +24,7 @@ public:
     ~PortScannerWindow();
     QString identifyService(int port);
 
-    enum ScanType {
+    enum ScanType { // 供选择的扫描类型
         QuickScan,
         FullScan,
         TCPScan,
@@ -50,11 +50,13 @@ private:
     int currentPort;
     int totalPorts;
     int activeScans;
+    int threadNum = 40;
     QMap<int, QString> commonPorts;
     ScanType scanType;
     QString selectedInterface;
     int udpFilteredPortNum = 0;
     int openPortNum = 0;
+    QList<int> commonPortList; // 常见端口列表
 };
 
 class PortScannerWorker : public QObject
@@ -75,7 +77,7 @@ private:
     QString selectedInterface;
     PortScannerWindow *scannerWindow;
 
-    // SYN scan helper functions
+    // SYN 扫描
     unsigned short checksum(void *b, int len);
     void create_syn_packet(char *packet, struct sockaddr_in *target, struct sockaddr_in *source);
     void create_ack_packet(char *packet, struct sockaddr_in *target, struct sockaddr_in *source);
@@ -84,39 +86,39 @@ private:
     bool receive_response(pcap_t *handle, struct sockaddr_in *target);
     bool udp_receive_response(SOCKET sock, struct sockaddr_in *target, bool &isFiltered);
     bool decode_icmp_response(char *buffer, int packet_size, struct DECODE_RESULT &decode_result);
-    QString fingerprintService(int port); // 新增的服务指纹识别函数
+    QString fingerprintService(int port); // Todo 参考namp（指纹识别）：精确端口服务
 };
 
-// Define DECODE_RESULT structure
+// 参照状态码
 struct DECODE_RESULT {
-    unsigned int port; // Port number
-    in_addr dwIPaddr; // IP address
-    BYTE code; // ICMP code
-    BYTE type; // ICMP type
+    unsigned int port;
+    in_addr dwIPaddr;
+    BYTE code;
+    BYTE type; // ICMP 类型
 };
 
-// Define IP header structure
+// IP 头
 struct IP_HEADER {
-    unsigned char hdr_len:4; // Header length
-    unsigned char version:4; // Version
-    unsigned char tos; // Type of service
-    unsigned short total_len; // Total length
-    unsigned short identifier; // Identification
-    unsigned short frag_and_flags; // Flags and fragment offset
-    unsigned char ttl; // Time to live
-    unsigned char protocol; // Protocol
-    unsigned short checksum; // Checksum
-    unsigned long sourceIP; // Source address
-    unsigned long destIP; // Destination address
+    unsigned char hdr_len:4; // 头长
+    unsigned char version:4; // 版本
+    unsigned char tos; // 服务类型
+    unsigned short total_len; // 总长
+    unsigned short identifier; // 标识
+    unsigned short frag_and_flags; // 标记 flag
+    unsigned char ttl;
+    unsigned char protocol;
+    unsigned short checksum; // 校验
+    unsigned long sourceIP;
+    unsigned long destIP;
 };
 
-// Define ICMP header structure
+// ICMP 报文头
 struct icmp_header {
-    BYTE type; // ICMP message type
-    BYTE code; // ICMP message code
-    USHORT checksum; // ICMP checksum
-    USHORT id; // ICMP identifier
-    USHORT seq; // ICMP sequence number
+    BYTE type; // 消息类型
+    BYTE code;
+    USHORT checksum;
+    USHORT id;
+    USHORT seq;
 };
 
 #endif // PORTSCANNERWINDOW_H
