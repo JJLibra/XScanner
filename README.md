@@ -6,6 +6,8 @@
 
 <h1 align="center">XScanner</h1>
 
+<h2 align="center">🎨Just a simple port scanner</h2>
+
 <p align="center">
     <a target="_blank" href="https://github.com/JJLibra">
       <img style="display:inline-block;margin:0.2em;" alt="Author" src="https://img.shields.io/badge/Author-Junjie Li-blue.svg?logo=autoit&style=flat">
@@ -18,14 +20,16 @@
     </a>
 </p>
 
-### 🎨 Just a simple port scanner. Candidates are very welcome to contribute code.
-
 ## ⚠ Precautions
 
-- The project paths must all be in English, otherwise an error will be reported during build
-- The icon may not be displayed when running for the first time. It may be that the import was not successful. Solution:
-After opening the project in QT creator, re-add the icon file in `Resources`-`img_src.qrc`-`Add existing file`.
-- This project uses raw socket programming and winpacp library for sending, receiving and analyzing messages. Therefore, before downloading the source code for secondary development, you need to configure the winpacp environment and modify the corresponding reference library path in the `.pro` file. You can [refer to this blog](https://blog.csdn.net/Mr_robot_strange/article/details/116016418).
+The project paths must all be in English, otherwise an error will be reported during build.
+
+The icon may not be displayed when running for the first time. It may be that the import was not successful.
+After opening the project in QT Creator, it is recommended to re-add the icon file in `Resources` - `img_src.qrc` - `Add Existing File`.
+
+This project uses raw socket programming and winpacp library for sending, receiving and analyzing messages.
+
+Therefore, before downloading the source code for secondary development, you need to configure the winpacp environment and modify the corresponding reference library path in the `.pro` file. You can [refer to this blog](https://blog.csdn.net/Mr_robot_strange/article/details/116016418).
 
 ## 🚀 How To Use ?
 
@@ -44,7 +48,7 @@ Currently the software only supports the following functions:
 
 It is very easy to use. Without further ado, I believe you, as a smart person, can get started quickly.
 
-## 🤝 Contribute
+## 🤝 Candidates are very welcome to contribute code.
 
 1. Contribute to this endeavor, `Fork` the present undertaking.
 2. Establish your distinctive branch of characteristics.
