@@ -53,12 +53,27 @@ PortScannerWindow::PortScannerWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
-    commonPorts.insert(80, "HTTP");
-    commonPorts.insert(443, "HTTPS");
     commonPorts.insert(21, "FTP");
     commonPorts.insert(22, "SSH");
     commonPorts.insert(23, "Telnet");
     commonPorts.insert(25, "SMTP");
+    commonPorts.insert(53, "DNS");
+    commonPorts.insert(80, "HTTP");
+    commonPorts.insert(110, "POP3");
+    commonPorts.insert(119, "NNTP");
+    commonPorts.insert(143, "IMAP");
+    commonPorts.insert(161, "SNMP");
+    commonPorts.insert(443, "HTTPS");
+    commonPorts.insert(445, "Microsoft-DS");
+    commonPorts.insert(993, "IMAPS");
+    commonPorts.insert(995, "POP3S");
+    commonPorts.insert(1080, "SOCKS");
+    commonPorts.insert(1433, "MSSQL");
+    commonPorts.insert(1723, "PPTP");
+    commonPorts.insert(3306, "MySQL");
+    commonPorts.insert(3389, "RDP");
+    commonPorts.insert(5900, "VNC");
+    commonPorts.insert(8080, "HTTP-Proxy");
 
     populateNetworkInterfaces();
 }
@@ -106,7 +121,7 @@ void PortScannerWindow::on_startButton_clicked()
     activeScans = 0;
 
     ui->resultTextEdit->append("正在扫描...");
-    for (int i = 0; i < 20 && currentPort <= endPort; ++i) {
+    for (int i = 0; i < 40 && currentPort <= endPort; ++i) {
         startPortScan();
     }
 }
@@ -137,12 +152,14 @@ void PortScannerWindow::handlePortScanResult(const QString &ip, int port, bool i
 
     if (isOpen) {
         if (isFiltered) {
-            ui->resultTextEdit->append(QString("Port %1 is open|filtered (%2)").arg(port).arg(service));
+            udpFilteredPortNum++;
+            //ui->resultTextEdit->append(QString("Port %1 is open|filtered (%2)").arg(port).arg(service));
         } else {
-            ui->resultTextEdit->append(QString("Port %1 is open (%2)").arg(port).arg(service));
+            openPortNum++;
+            ui->resultTextEdit->append(QString("Port %1 is open / service: (%2)").arg(port).arg(service));
         }
     } else {
-        ui->resultTextEdit->append(QString("Port %1 is closed (%2)").arg(port).arg(service));
+        //ui->resultTextEdit->append(QString("Port %1 is closed (%2)").arg(port).arg(service));
     }
 
     int progress = ((currentPort - startPort) * 100) / totalPorts;
@@ -153,7 +170,8 @@ void PortScannerWindow::handlePortScanResult(const QString &ip, int port, bool i
     }
 
     if (activeScans == 0 && currentPort > endPort) {
-        ui->resultTextEdit->append("端口扫描已完成");
+        if (scanType == PortScannerWindow::UDPScan) ui->resultTextEdit->append(QString("%1 ports is open|filtered (%2)").arg(udpFilteredPortNum).arg(service));
+        ui->resultTextEdit->append(QString("端口扫描已完成: There are %1 ports open").arg(openPortNum));
     }
 }
 
@@ -164,7 +182,7 @@ void PortScannerWindow::updateProgress(int value)
 
 QString PortScannerWindow::identifyService(int port)
 {
-    return commonPorts.value(port, "Unknown");
+    return commonPorts.value(port, "tcp?");
 }
 
 PortScannerWorker::PortScannerWorker(const QString &ip, int port, PortScannerWindow::ScanType scanType, const QString &selectedInterface, PortScannerWindow *scannerWindow, QObject *parent)
@@ -485,33 +503,6 @@ void PortScannerWorker::startScan()
             isOpen = true;
         } else {
             qDebug() << "Failed to send SYN packet.";
-        }
-    } else if (scanType == PortScannerWindow::FINscan) {
-        // 这里可以实现 FIN 扫描逻辑
-    } else if (scanType == PortScannerWindow::ACKscan) {
-        QString localIPAddress = getLocalIPAddress();
-        if (localIPAddress.isEmpty()) {
-            qDebug() << "Failed to get local IP address.";
-            emit portScanFinished(ipAddress, port, false, "Local IP Error", isFiltered);
-            return;
-        }
-
-        struct sockaddr_in source, target;
-        source.sin_family = AF_INET;
-        source.sin_addr.s_addr = inet_addr(localIPAddress.toStdString().c_str());
-        target.sin_family = AF_INET;
-        target.sin_addr.s_addr = inet_addr(ipAddress.toStdString().c_str());
-        target.sin_port = htons(port);
-
-        char packet[4096];
-        memset(packet, 0, 4096);
-        create_ack_packet(packet, &target, &source);
-
-        if (send_packet(packet, sizeof(struct ip) + sizeof(struct tcphdr), &target)) {
-            qDebug() << "ACK packet sent successfully.";
-            isOpen = true;
-        } else {
-            qDebug() << "Failed to send ACK packet.";
         }
     } else {
         QTcpSocket socket;

@@ -2,5 +2,6 @@
     <qresource prefix="/">
         <file>xxfer.ico</file>
         <file>1.qss</file>
+        <file>xxfer.jpg</file>
     </qresource>
 </RCC>

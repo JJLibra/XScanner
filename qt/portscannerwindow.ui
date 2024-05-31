@@ -24,14 +24,14 @@
           <item>
            <widget class="QLabel">
             <property name="text">
-             <string>IP Address:</string>
+             <string>目标 IP:</string>
             </property>
            </widget>
           </item>
           <item>
            <widget class="QLineEdit" name="ipLineEdit">
             <property name="placeholderText">
-             <string>Enter IP Address</string>
+             <string></string>
             </property>
            </widget>
           </item>
@@ -42,14 +42,14 @@
           <item>
            <widget class="QLabel">
             <property name="text">
-             <string>Start Port:</string>
+             <string>起始端口:</string>
             </property>
            </widget>
           </item>
           <item>
            <widget class="QLineEdit" name="startPortLineEdit">
             <property name="placeholderText">
-             <string>Enter Start Port</string>
+             <string></string>
             </property>
            </widget>
           </item>
@@ -60,14 +60,14 @@
           <item>
            <widget class="QLabel">
             <property name="text">
-             <string>End Port:</string>
+             <string>终止端口:</string>
             </property>
            </widget>
           </item>
           <item>
            <widget class="QLineEdit" name="endPortLineEdit">
             <property name="placeholderText">
-             <string>Enter End Port</string>
+             <string></string>
             </property>
            </widget>
           </item>
@@ -78,12 +78,21 @@
           <item>
            <widget class="QLabel">
             <property name="text">
-             <string>Scan Type:</string>
+             <string>扫描模式:</string>
             </property>
            </widget>
           </item>
           <item>
            <widget class="QComboBox" name="scanTypeComboBox">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="minimumWidth">
+             <number>150</number>
+            </property>
             <item>
              <property name="text">
               <string>Quick Scan</string>
@@ -128,14 +137,23 @@
           <item>
            <widget class="QLabel">
             <property name="text">
-             <string>Network Interface:</string>
+             <string>选择网卡接口:</string>
             </property>
            </widget>
           </item>
           <item>
            <widget class="QComboBox" name="interfaceComboBox">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="minimumWidth">
+             <number>150</number>
+            </property>
             <property name="placeholderText">
-             <string>Select Network Interface</string>
+             <string>Optional</string>
             </property>
            </widget>
           </item>
@@ -146,7 +164,7 @@
       <item>
        <widget class="QPushButton" name="startButton">
         <property name="text">
-         <string>Start Scan</string>
+         <string>开始扫描</string>
         </property>
         <property name="sizePolicy">
          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
@@ -172,7 +190,7 @@
       <item>
        <widget class="QLabel">
         <property name="text">
-         <string>Scan Results:</string>
+         <string>扫描结果:</string>
         </property>
        </widget>
       </item>

@@ -53,6 +53,8 @@ private:
     QMap<int, QString> commonPorts;
     ScanType scanType;
     QString selectedInterface;
+    int udpFilteredPortNum = 0;
+    int openPortNum = 0;
 };
 
 class PortScannerWorker : public QObject
@@ -82,6 +84,7 @@ private:
     bool receive_response(pcap_t *handle, struct sockaddr_in *target);
     bool udp_receive_response(SOCKET sock, struct sockaddr_in *target, bool &isFiltered);
     bool decode_icmp_response(char *buffer, int packet_size, struct DECODE_RESULT &decode_result);
+    QString fingerprintService(int port); // 新增的服务指纹识别函数
 };
 
 // Define DECODE_RESULT structure
