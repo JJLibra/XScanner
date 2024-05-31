@@ -7,6 +7,7 @@
 #include <QMap>
 #include <QUdpSocket>
 #include <QNetworkInterface>
+#include <pcap.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
 
@@ -37,6 +38,7 @@ private slots:
     void on_startButton_clicked();
     void handlePortScanResult(const QString &ip, int port, bool isOpen, const QString &service, bool isFiltered);
     void updateProgress(int value);
+    void populateNetworkInterfaces();
 
 private:
     Ui::PortScannerWindow *ui;
@@ -50,6 +52,9 @@ private:
     int activeScans;
     QMap<int, QString> commonPorts;
     ScanType scanType;
+    QString selectedInterface;
+    int udpFilteredPortNum = 0;
+    int openPortNum = 0;
 };
 
 class PortScannerWorker : public QObject
@@ -57,7 +62,7 @@ class PortScannerWorker : public QObject
     Q_OBJECT
 
 public:
-    PortScannerWorker(const QString &ip, int port, PortScannerWindow::ScanType scanType, PortScannerWindow *scannerWindow, QObject *parent = nullptr);
+    PortScannerWorker(const QString &ip, int port, PortScannerWindow::ScanType scanType, const QString &selectedInterface, PortScannerWindow *scannerWindow, QObject *parent = nullptr);
     void startScan();
 
 signals:
@@ -67,21 +72,24 @@ private:
     QString ipAddress;
     int port;
     PortScannerWindow::ScanType scanType;
+    QString selectedInterface;
     PortScannerWindow *scannerWindow;
 
     // SYN scan helper functions
     unsigned short checksum(void *b, int len);
     void create_syn_packet(char *packet, struct sockaddr_in *target, struct sockaddr_in *source);
-    bool send_syn_packet(const char *packet, int packet_len, struct sockaddr_in *target);
+    void create_ack_packet(char *packet, struct sockaddr_in *target, struct sockaddr_in *source);
+    bool send_packet(const char *packet, int packet_len, struct sockaddr_in *target);
     QString getLocalIPAddress();
-    bool receive_response(SOCKET sock, struct sockaddr_in *target);
+    bool receive_response(pcap_t *handle, struct sockaddr_in *target);
     bool udp_receive_response(SOCKET sock, struct sockaddr_in *target, bool &isFiltered);
     bool decode_icmp_response(char *buffer, int packet_size, struct DECODE_RESULT &decode_result);
+    QString fingerprintService(int port); // 新增的服务指纹识别函数
 };
 
 // Define DECODE_RESULT structure
 struct DECODE_RESULT {
-    UINT port; // Port number
+    unsigned int port; // Port number
     in_addr dwIPaddr; // IP address
     BYTE code; // ICMP code
     BYTE type; // ICMP type

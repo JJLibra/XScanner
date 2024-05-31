@@ -21,7 +21,7 @@ int main(int argc, char *argv[])
     MainWindow w;
 
     QMainWindow mainWindow;
-    mainWindow.setWindowIcon(QIcon(":/xxfer.ico"));
+    mainWindow.setWindowIcon(QIcon(":/xxfer.jpg"));
 
     QFile qssFile(":/1.qss");
     if(qssFile.open(QFile::ReadOnly)){

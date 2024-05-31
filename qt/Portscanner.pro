@@ -26,6 +26,7 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 
 DISTFILES += \
     1.qss \
+    app.manifest \
     xxfer.ico
 
 RESOURCES += \
@@ -33,4 +34,10 @@ RESOURCES += \
 
 RC_ICONS = xxfer.ico
 
-win32:LIBS += -lws2_32 -liphlpapi
+# WinSock
+LIBS += -lws2_32
+LIBS += -liphlpapi
+
+INCLUDEPATH += "D:\Tools\github\personal\Projects\xxferScanner\winpacp_demo\WpdPack/Include"
+LIBS += "-LD:\Tools\github\personal\Projects\xxferScanner\winpacp_demo\WpdPack/Lib/x64" -lwpcap -lPacket
+

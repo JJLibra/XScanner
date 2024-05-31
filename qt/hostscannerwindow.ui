@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>400</height>
+    <height>350</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -24,14 +24,14 @@
           <item>
            <widget class="QLabel">
             <property name="text">
-             <string>Network:</string>
+             <string>扫描网段:</string>
             </property>
            </widget>
           </item>
           <item>
            <widget class="QLineEdit" name="networkLineEdit">
             <property name="placeholderText">
-             <string>192.168.1.0</string>
+             <string>eg:192.168.1.0</string>
             </property>
            </widget>
           </item>
@@ -42,14 +42,14 @@
           <item>
            <widget class="QLabel">
             <property name="text">
-             <string>Subnet Mask:</string>
+             <string>子网掩码:</string>
             </property>
            </widget>
           </item>
           <item>
            <widget class="QLineEdit" name="subnetMaskLineEdit">
             <property name="placeholderText">
-             <string>255.255.255.0</string>
+             <string>eg:255.255.255.0</string>
             </property>
            </widget>
           </item>
@@ -84,7 +84,7 @@
     <item>
      <widget class="QLabel">
       <property name="text">
-       <string>Results:</string>
+       <string>扫描过程:</string>
       </property>
      </widget>
     </item>
@@ -94,7 +94,7 @@
     <item>
      <widget class="QLabel">
       <property name="text">
-       <string>Alive Hosts:</string>
+       <string>存活主机:</string>
       </property>
      </widget>
     </item>
