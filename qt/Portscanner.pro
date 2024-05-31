@@ -32,7 +32,7 @@ DISTFILES += \
 RESOURCES += \
     img_src.qrc
 
-RC_ICONS = xxfer.ico
+RC_ICONS = logo.ico
 
 # WinSock
 LIBS += -lws2_32
