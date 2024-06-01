@@ -155,8 +155,10 @@ void PortScannerWindow::on_startButton_clicked()
     activeScans = 0; // 活动扫描数
     openPortNum = 0; // 开放端口数
     udpFilteredPortNum = 0; // UDP Filtered 端口数
-    ui->resultTextEdit->append("正在扫描...\n");
-    ui->resultTextEdit->append("PORT       STATE             SERVICE");
+
+    QString startTime = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm");
+    ui->resultTextEdit->append("Starting XScanner at   " + startTime);
+    ui->resultTextEdit->append("\nPORT       STATE             SERVICE");
 
     timer.start(); // 扫描计时器
 
