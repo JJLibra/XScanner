@@ -85,16 +85,13 @@ private:
     QString selectedInterface;
     PortScannerWindow *scannerWindow;
 
-    // SYN 扫描
-    unsigned short checksum(void *b, int len);
-    void create_syn_packet(char *packet, struct sockaddr_in *target, struct sockaddr_in *source);
-    void create_ack_packet(char *packet, struct sockaddr_in *target, struct sockaddr_in *source);
-    bool send_packet(const char *packet, int packet_len, struct sockaddr_in *target);
     QString getLocalIPAddress();
     bool receive_response(pcap_t *handle, struct sockaddr_in *target);
     bool udp_receive_response(QUdpSocket &udpSocket, const QHostAddress &target, quint16 targetPort);
     bool decode_icmp_response(char *buffer, int packet_size, struct DECODE_RESULT &decode_result);
-    QString fingerprintService(int port); // Todo 参考namp（指纹识别）：精确端口服务
+
+    bool send_syn_packet(pcap_t *handle, const char *src_ip, const char *dst_ip, int dst_port);
+    unsigned short checksum(void *b, int len);
 };
 
 // 参照状态码

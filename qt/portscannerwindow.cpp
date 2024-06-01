@@ -9,6 +9,21 @@
 #include <QElapsedTimer>
 #include <QFileDialog>
 #include <QTimer>
+#include <pcap.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <QHostAddress>
+#include <QNetworkInterface>
+
+// 手动定义TCP标志位
+#define TH_FIN  0x01
+#define TH_SYN  0x02
+#define TH_RST  0x04
+#define TH_PUSH 0x08
+#define TH_ACK  0x10
+#define TH_URG  0x20
+#define TH_ECE  0x40
+#define TH_CWR  0x80
 
 struct ip {
     unsigned char  ip_hl:4;
@@ -36,20 +51,33 @@ struct tcphdr {
     u_short th_urp;
 };
 
+// 定义伪头结构以计算TCP校验和
 struct pseudo_header {
-    u_int src_addr;
-    u_int dst_addr;
-    u_char zero;
-    u_char protocol;
-    u_short length;
+    u_int32_t source_address;
+    u_int32_t dest_address;
+    u_int8_t placeholder;
+    u_int8_t protocol;
+    u_int16_t tcp_length;
 };
 
-#define TH_FIN  0x01
-#define TH_SYN  0x02
-#define TH_RST  0x04
-#define TH_PUSH 0x08
-#define TH_ACK  0x10
-#define TH_URG  0x20
+// 校验和函数
+//unsigned short checksum(void *b, int len) {
+//    unsigned short *buf = (unsigned short *)b;
+//    unsigned int sum = 0;
+//    unsigned short result;
+
+//    for (sum = 0; len > 1; len -= 2) {
+//        sum += *buf++;
+//    }
+//    if (len == 1) {
+//        sum += *(unsigned char *)buf;
+//    }
+//    sum = (sum >> 16) + (sum & 0xFFFF);
+//    sum += (sum >> 16);
+//    result = ~sum;
+
+//    return result;
+//}
 
 PortScannerWindow::PortScannerWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::PortScannerWindow), activeScans(0), threadNum(50), tcpDelay(100)
@@ -245,155 +273,6 @@ PortScannerWorker::PortScannerWorker(const QString &ip, int port, PortScannerWin
 {
 }
 
-unsigned short PortScannerWorker::checksum(void *b, int len) {
-    unsigned short *buf = (unsigned short *)b;
-    unsigned int sum = 0;
-    unsigned short result;
-
-    for (sum = 0; len > 1; len -= 2) {
-        sum += *buf++;
-    }
-    if (len == 1) {
-        sum += *(unsigned char *)buf;
-    }
-    sum = (sum >> 16) + (sum & 0xFFFF);
-    sum += (sum >> 16);
-    result = ~sum;
-    return result;
-}
-
-// 创建 TCP_SYN 报文
-void PortScannerWorker::create_syn_packet(char *packet, struct sockaddr_in *target, struct sockaddr_in *source) {
-    struct ip *iph = (struct ip *)packet;
-    struct tcphdr *tcph = (struct tcphdr *)(packet + sizeof(struct ip));
-    struct pseudo_header psh;
-
-    iph->ip_hl = 5;
-    iph->ip_v = 4;
-    iph->ip_tos = 0;
-    iph->ip_len = htons(sizeof(struct ip) + sizeof(struct tcphdr));
-    iph->ip_id = htons(54321);
-    iph->ip_off = 0;
-    iph->ip_ttl = 255;
-    iph->ip_p = IPPROTO_TCP;
-    iph->ip_sum = 0;
-    iph->ip_src.s_addr = source->sin_addr.s_addr;
-    iph->ip_dst.s_addr = target->sin_addr.s_addr;
-    iph->ip_sum = checksum((unsigned short *)packet, sizeof(struct ip));
-
-    tcph->th_sport = htons(12345);
-    tcph->th_dport = target->sin_port;
-    tcph->th_seq = 0;
-    tcph->th_ack = 0;
-    tcph->th_offx2 = 0x50;
-    tcph->th_flags = TH_SYN;
-    tcph->th_win = htons(32767);
-    tcph->th_sum = 0;
-    tcph->th_urp = 0;
-
-    psh.src_addr = source->sin_addr.s_addr;
-    psh.dst_addr = target->sin_addr.s_addr;
-    psh.zero = 0;
-    psh.protocol = IPPROTO_TCP;
-    psh.length = htons(sizeof(struct tcphdr));
-
-    int psize = sizeof(struct pseudo_header) + sizeof(struct tcphdr);
-    char *pseudogram = (char *)malloc(psize);
-    memcpy(pseudogram, (char *)&psh, sizeof(struct pseudo_header));
-    memcpy(pseudogram + sizeof(struct pseudo_header), tcph, sizeof(struct tcphdr));
-    tcph->th_sum = checksum((unsigned short *)pseudogram, psize);
-    free(pseudogram);
-}
-
-// 创建 TCP_ACK 报文
-void PortScannerWorker::create_ack_packet(char *packet, struct sockaddr_in *target, struct sockaddr_in *source) {
-    struct ip *iph = (struct ip *)packet;
-    struct tcphdr *tcph = (struct tcphdr *)(packet + sizeof(struct ip));
-    struct pseudo_header psh;
-
-    iph->ip_hl = 5;
-    iph->ip_v = 4;
-    iph->ip_tos = 0;
-    iph->ip_len = htons(sizeof(struct ip) + sizeof(struct tcphdr));
-    iph->ip_id = htons(54321);
-    iph->ip_off = 0;
-    iph->ip_ttl = 255;
-    iph->ip_p = IPPROTO_TCP;
-    iph->ip_sum = 0;
-    iph->ip_src.s_addr = source->sin_addr.s_addr;
-    iph->ip_dst.s_addr = target->sin_addr.s_addr;
-    iph->ip_sum = checksum((unsigned short *)packet, sizeof(struct ip));
-
-    tcph->th_sport = htons(12345);
-    tcph->th_dport = target->sin_port;
-    tcph->th_seq = 0;
-    tcph->th_ack = 0;
-    tcph->th_offx2 = 0x50;
-    tcph->th_flags = TH_ACK;
-    tcph->th_win = htons(32767);
-    tcph->th_sum = 0;
-    tcph->th_urp = 0;
-
-    psh.src_addr = source->sin_addr.s_addr;
-    psh.dst_addr = target->sin_addr.s_addr;
-    psh.zero = 0;
-    psh.protocol = IPPROTO_TCP;
-    psh.length = htons(sizeof(struct tcphdr));
-
-    int psize = sizeof(struct pseudo_header) + sizeof(struct tcphdr);
-    char *pseudogram = (char *)malloc(psize);
-    memcpy(pseudogram, (char *)&psh, sizeof(struct pseudo_header));
-    memcpy(pseudogram + sizeof(struct pseudo_header), tcph, sizeof(struct tcphdr));
-    tcph->th_sum = checksum((unsigned short *)pseudogram, psize);
-    free(pseudogram);
-}
-
-bool PortScannerWorker::send_packet(const char *packet, int packet_len, struct sockaddr_in *target)
-{
-    pcap_if_t *alldevs;
-    pcap_if_t *d;
-    int i = 0;
-    char errbuf[PCAP_ERRBUF_SIZE];
-
-    if (pcap_findalldevs(&alldevs, errbuf) == -1) {
-        qDebug() << "网络接口获取错误: " << errbuf;
-        return false;
-    }
-
-    // 获取选中的网络接口
-    pcap_if_t *device = nullptr;
-    for (d = alldevs; d; d = d->next) {
-        if (selectedInterface == d->name) {
-            device = d;
-            break;
-        }
-    }
-
-    if (device == nullptr) {
-        qDebug() << "找不到所选网络接口";
-        pcap_freealldevs(alldevs);
-        return false;
-    }
-
-    pcap_t *handle;
-    if ((handle = pcap_open_live(device->name, 65536, 1, 1000, errbuf)) == NULL) {
-        qDebug() << "无法打开 adapter" << device->name << " 不支持 WinPcap";
-        pcap_freealldevs(alldevs);
-        return false;
-    }
-
-    if (pcap_sendpacket(handle, (const u_char *)packet, packet_len) != 0) {
-        qDebug() << "数据包发送失败: " << pcap_geterr(handle);
-        pcap_freealldevs(alldevs);
-        return false;
-    }
-
-    bool result = receive_response(handle, target); // 接收响应报文
-    pcap_close(handle);
-    pcap_freealldevs(alldevs);
-    return result;
-}
-
 QString PortScannerWorker::getLocalIPAddress() { //获取本地 IP 地址
     const QHostAddress &localhost = QHostAddress(QHostAddress::LocalHost);
     for (const QHostAddress &address : QNetworkInterface::allAddresses()) {
@@ -429,23 +308,6 @@ bool PortScannerWorker::receive_response(pcap_t *handle, struct sockaddr_in *tar
     }
 
     return false;
-}
-
-bool PortScannerWorker::decode_icmp_response(char *buffer, int packet_size, DECODE_RESULT &decode_result) {
-    IP_HEADER *ip_header = (IP_HEADER *)buffer;
-    int ip_header_len = ip_header->hdr_len * 4;
-    if (packet_size < (int)(ip_header_len + sizeof(icmp_header))) {
-        qDebug() << "Error: 报文长度过短";
-        return false;
-    }
-
-    icmp_header *icmp_hdr = (icmp_header *)(buffer + ip_header_len);
-    decode_result.code = icmp_hdr->code;
-    decode_result.type = icmp_hdr->type;
-    decode_result.port = ntohs(*(u_short *)(buffer + 20 + 8 + 20 + 2));
-    decode_result.dwIPaddr.S_un.S_addr = ip_header->sourceIP;
-
-    return (icmp_hdr->type == 3 && icmp_hdr->code == 3);
 }
 
 bool PortScannerWorker::udp_receive_response(QUdpSocket &udpSocket, const QHostAddress &target, quint16 targetPort) {
@@ -512,24 +374,54 @@ void PortScannerWorker::startScan()
             break;
         }
         case PortScannerWindow::SYNscan: { // SYN 扫描
-            QString localIPAddress = getLocalIPAddress();
-            if (localIPAddress.isEmpty()) {
-                qDebug() << "本地 IP 获取失败";
-                emit portScanFinished(ipAddress, port, false, "Local IP Error", isFiltered);
-                return;
+            QTcpSocket socket;
+            socket.connectToHost(address, port);
+            if (socket.waitForConnected(scannerWindow->getTcpDelay())) {
+                isOpen = true;
+                socket.disconnectFromHost();
             }
+            socket.close();
+            break;
+            char errbuf[PCAP_ERRBUF_SIZE];
+            pcap_t *handle;
+            handle = pcap_open_live(selectedInterface.toStdString().c_str(), BUFSIZ, 1, 1000, errbuf);
+            if (handle == nullptr) {
+                qDebug() << "无法打开设备：" << errbuf;
+                break;
+            }
+
+            if (send_syn_packet(handle, getLocalIPAddress().toStdString().c_str(), ipAddress.toStdString().c_str(), port)) {
+                struct sockaddr_in target;
+                memset(&target, 0, sizeof(target));
+                target.sin_family = AF_INET;
+                target.sin_port = htons(port);
+                inet_pton(AF_INET, ipAddress.toStdString().c_str(), &target.sin_addr);
+
+                isOpen = receive_response(handle, &target);
+            }
+
+            pcap_close(handle);
+            break;
         }
         case PortScannerWindow::ACKscan: {
-            // ACK 扫描的逻辑
-            //break;
+            QTcpSocket socket;
+            socket.connectToHost(address, port);
+            if (socket.waitForConnected(scannerWindow->getTcpDelay())) {
+                isOpen = true;
+                socket.disconnectFromHost();
+            }
+            socket.close();
+            break;
         }
         case PortScannerWindow::FINscan: {
-            // FIN 扫描的逻辑
-            //break;
-        }
-        case PortScannerWindow::QuickScan: {
-
-            //break;
+            QTcpSocket socket;
+            socket.connectToHost(address, port);
+            if (socket.waitForConnected(scannerWindow->getTcpDelay())) {
+                isOpen = true;
+                socket.disconnectFromHost();
+            }
+            socket.close();
+            break;
         }
         default: { // TCP 全连接扫描
             QTcpSocket socket;
@@ -545,4 +437,68 @@ void PortScannerWorker::startScan()
 
     QString service = isOpen ? scannerWindow->identifyService(port) : "";
     emit portScanFinished(ipAddress, port, isOpen, service, isFiltered);
+}
+
+bool PortScannerWorker::send_syn_packet(pcap_t *handle, const char *src_ip, const char *dst_ip, int dst_port) {
+    char packet[4096];
+    struct ip *iph = (struct ip *)packet;
+    struct tcphdr *tcph = (struct tcphdr *)(packet + sizeof(struct ip));
+    struct sockaddr_in sin;
+
+    sin.sin_family = AF_INET;
+    sin.sin_port = htons(dst_port);
+    sin.sin_addr.s_addr = inet_addr(dst_ip);
+
+    memset(packet, 0, 4096);
+
+    // IP 头
+    iph->ip_hl = 5;
+    iph->ip_v = 4;
+    iph->ip_tos = 0;
+    iph->ip_len = htons(sizeof(struct ip) + sizeof(struct tcphdr));
+    iph->ip_id = htonl(54321);
+    iph->ip_off = 0;
+    iph->ip_ttl = 255;
+    iph->ip_p = IPPROTO_TCP;
+    iph->ip_sum = 0;
+    iph->ip_src.s_addr = inet_addr(src_ip);
+    iph->ip_dst.s_addr = sin.sin_addr.s_addr;
+
+    //iph->ip_sum = checksum((unsigned short *)packet, sizeof(struct ip));
+
+    // TCP 头
+    tcph->th_sport = htons(12345);
+    tcph->th_dport = htons(dst_port);
+    tcph->th_seq = 0;
+    tcph->th_ack = 0;
+    tcph->th_offx2 = 5 << 4;
+    tcph->th_flags = TH_SYN;
+    tcph->th_win = htons(5840);
+    tcph->th_sum = 0;
+    tcph->th_urp = 0;
+
+    struct pseudo_header psh;
+    psh.source_address = inet_addr(src_ip);
+    psh.dest_address = sin.sin_addr.s_addr;
+    psh.placeholder = 0;
+    psh.protocol = IPPROTO_TCP;
+    psh.tcp_length = htons(sizeof(struct tcphdr));
+
+    int psize = sizeof(struct pseudo_header) + sizeof(struct tcphdr);
+    char *pseudogram = (char *)malloc(psize);
+
+    memcpy(pseudogram, (char *)&psh, sizeof(struct pseudo_header));
+    memcpy(pseudogram + sizeof(struct pseudo_header), tcph, sizeof(struct tcphdr));
+
+    //tcph->th_sum = checksum((unsigned short *)pseudogram, psize);
+
+    free(pseudogram);
+
+    if (pcap_sendpacket(handle, (const u_char *)packet, sizeof(struct ip) + sizeof(struct tcphdr)) != 0) {
+        qDebug() << "发送错误: " << pcap_geterr(handle);
+        return false;
+    }
+
+    qDebug() << "已发送成功" << dst_port;
+    return true;
 }
