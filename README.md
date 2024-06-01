@@ -37,12 +37,14 @@ This project is developed using the QT framework C++ and the development environ
 
 The project has been packaged into an `.exe` file and is ready to use.📦
 
+**However, if you want to use TCP-SYN, TCP-ACK, TCP-FIN modes, make sure winpcap is installed.**
+
 It is also very simple to perform secondary development based on the source code. Just use Qt Creater to open the project. Of course, you can also use an editor such as VScode configured with the Qt environment to open it.
 
 Currently the software only supports the following functions:
 1. Scan Class C subnets to find live hosts.
 2. Scan the specified host IP for port openness and service type.
-3. Scan type: Ping, TCP, TCP-SYN, TCP-ACK, TCP-FIN, UDP.
+3. Scan type: Ping, TCP, UDP, (TCP-SYN, TCP-ACK, TCP-FIN).
 4. Supports customizing the number of threads and waiting response delay.
 5. Save scan log.
 6. The port service type is not accurate and is for reference only.
@@ -69,4 +71,4 @@ git push origin feature/AmazingFeature
 
 ## License
 
-[Apache 2.0](https://github.com/JJLibra/XScanner/blob/main/LICENSE)
+[Apache-2.0](https://github.com/JJLibra/XScanner/blob/main/LICENSE)
