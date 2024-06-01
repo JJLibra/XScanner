@@ -158,7 +158,7 @@ void PortScannerWindow::on_startButton_clicked()
 
     QString startTime = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm");
     ui->resultTextEdit->append("Starting XScanner at   " + startTime);
-    ui->resultTextEdit->append("\nPORT       STATE             SERVICE");
+    ui->resultTextEdit->append("\nPORT           STATE         SERVICE");
 
     timer.start(); // 扫描计时器
 
@@ -197,12 +197,16 @@ void PortScannerWindow::handlePortScanResult(const QString &ip, int port, bool i
     activeScans--;
 
     if (isOpen) {
+
+        QString result;
+
         if (isFiltered && scanType == PortScannerWindow::UDPScan) {
-            ui->resultTextEdit->append(QString("%1/udp  open|filtered  %2").arg(port).arg(service));
+            result = QString("%1/udp").arg(port).leftJustified(10, ' ') + QString("open|filtered").leftJustified(15, ' ') + service.leftJustified(10, ' ');
             udpFilteredPortNum++;
         } else {
-            ui->resultTextEdit->append(QString("%1/tcp   open               %2").arg(port).arg(service));
+            result = QString("%1/tcp").arg(port).leftJustified(15, ' ') + QString("open").leftJustified(15, ' ') + service.leftJustified(10, ' ');
         }
+        ui->resultTextEdit->append(result);
         openPortNum++;
     }
 
