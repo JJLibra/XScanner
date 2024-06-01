@@ -24,7 +24,7 @@
           <item>
            <widget class="QLabel">
             <property name="text">
-             <string>目 标IP：</string>
+             <string>目标IP：</string>
             </property>
            </widget>
           </item>
@@ -149,6 +149,30 @@
             </property>
             <property name="placeholderText">
              <string>Optional</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout">
+          <item>
+           <widget class="QLabel">
+            <property name="text">
+             <string>线程数（default: 50; max: 100）:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QSpinBox" name="threadNumSpinBox">
+            <property name="minimum">
+             <number>1</number>
+            </property>
+            <property name="maximum">
+             <number>100</number>
+            </property>
+            <property name="value">
+             <number>50</number>
             </property>
            </widget>
           </item>

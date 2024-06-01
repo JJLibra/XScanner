@@ -51,7 +51,7 @@ private:
     int currentPort;
     int totalPorts;
     int activeScans;
-    int threadNum = 50;
+    int threadNum;
     QMap<int, QString> commonPorts;
     ScanType scanType;
     QString selectedInterface;

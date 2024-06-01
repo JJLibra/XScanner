@@ -8,6 +8,7 @@
 #include <string.h>
 #include <QElapsedTimer>
 #include <QFileDialog>
+#include <QTimer>
 
 struct ip {
     unsigned char  ip_hl:4;
@@ -51,7 +52,7 @@ struct pseudo_header {
 #define TH_URG  0x20
 
 PortScannerWindow::PortScannerWindow(QWidget *parent)
-    : QMainWindow(parent), ui(new Ui::PortScannerWindow), activeScans(0)
+    : QMainWindow(parent), ui(new Ui::PortScannerWindow), activeScans(0), threadNum(50)
 {
     ui->setupUi(this);
 
@@ -77,6 +78,8 @@ PortScannerWindow::PortScannerWindow(QWidget *parent)
     commonPorts.insert(3389, "RDP");
     commonPorts.insert(5900, "VNC");
     commonPorts.insert(8080, "HTTP-Proxy");
+
+    ui->threadNumSpinBox->setValue(threadNum);
 
     populateNetworkInterfaces(); // 查找可使用的网络接口
 }
@@ -147,9 +150,9 @@ void PortScannerWindow::on_startButton_clicked()
     ui->resultTextEdit->append("正在扫描...\n");
     ui->resultTextEdit->append("PORT       STATE             SERVICE");
 
-    timer.start();
+    timer.start(); // 扫描计时器
 
-    for (int i = 0; i < threadNum && currentPort <= endPort; ++i) { // 目前使用 40 线程
+    for (int i = 0; i < threadNum && currentPort <= endPort; ++i) {
         startPortScan();
     }
 }
@@ -172,6 +175,10 @@ void PortScannerWindow::startPortScan()
         connect(thread, &QThread::finished, thread, &QThread::deleteLater);
 
         thread->start();
+
+        if (activeScans % threadNum == 0 && scanType == PortScannerWindow::UDPScan) {
+            QThread::msleep(5); // 设置延时
+        }
     }
 }
 
@@ -429,7 +436,7 @@ bool PortScannerWorker::decode_icmp_response(char *buffer, int packet_size, DECO
 
 bool PortScannerWorker::udp_receive_response(QUdpSocket &udpSocket, const QHostAddress &target, quint16 targetPort) {
     // 等待响应
-    if (udpSocket.waitForReadyRead(3000)) {
+    if (udpSocket.waitForReadyRead(1500)) {
         while (udpSocket.hasPendingDatagrams()) {
             QByteArray response;
             QHostAddress sender;
