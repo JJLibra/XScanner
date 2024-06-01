@@ -43,8 +43,10 @@ Currently the software only supports the following functions:
 1. Scan Class C subnets to find live hosts.
 2. Scan the specified host IP for port openness and service type.
 3. Scan type: Ping, TCP, TCP-SYN, TCP-ACK, TCP-FIN, UDP.
-4. Save scan log.
-5. ...(todo)
+4. Supports customizing the number of threads and waiting response delay.
+5. Save scan log.
+6. The port service type is not accurate and is for reference only.
+7. ...(todo)
 
 It is very easy to use. Without further ado, I believe you, as a smart person, can get started quickly.
 
@@ -64,3 +66,7 @@ git commit -m 'Add some AmazingFeature'
 git push origin feature/AmazingFeature
 ```
 5. Submit a formal pull request for consideration.
+
+## License
+
+[Apache 2.0](https://github.com/JJLibra/XScanner/blob/main/LICENSE)

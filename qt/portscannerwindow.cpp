@@ -6,6 +6,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <QElapsedTimer>
+#include <QFileDialog>
+#include <QTimer>
 
 struct ip {
     unsigned char  ip_hl:4;
@@ -49,10 +52,11 @@ struct pseudo_header {
 #define TH_URG  0x20
 
 PortScannerWindow::PortScannerWindow(QWidget *parent)
-    : QMainWindow(parent), ui(new Ui::PortScannerWindow), activeScans(0)
+    : QMainWindow(parent), ui(new Ui::PortScannerWindow), activeScans(0), threadNum(50), tcpDelay(100)
 {
     ui->setupUi(this);
 
+    // 目前使用常见端口-服务映射表确定端口服务
     commonPorts.insert(21, "FTP");
     commonPorts.insert(22, "SSH");
     commonPorts.insert(23, "Telnet");
@@ -75,12 +79,39 @@ PortScannerWindow::PortScannerWindow(QWidget *parent)
     commonPorts.insert(5900, "VNC");
     commonPorts.insert(8080, "HTTP-Proxy");
 
-    populateNetworkInterfaces();
+    ui->threadNumSpinBox->setValue(threadNum);
+    ui->tcpDelaySpinBox->setValue(tcpDelay);
+
+    populateNetworkInterfaces(); // 查找可使用的网络接口
 }
 
 PortScannerWindow::~PortScannerWindow()
 {
     delete ui;
+}
+
+int PortScannerWindow::getTcpDelay() const {
+    return tcpDelay;
+}
+
+void PortScannerWindow::on_saveLogButton_clicked()
+{
+    QString fileName = QFileDialog::getSaveFileName(this, tr("保存日志"), "", tr("文本文件 (*.txt)"));
+    if (!fileName.isEmpty()) {
+        QFile file(fileName);
+        if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+            QTextStream out(&file);
+            out << "目标 IP: " << ipAddress << "\n";
+            out << "起始端口: " << startPort << "\n";
+            out << "终止端口: " << endPort << "\n";
+            out << "扫描模式: " << ui->scanTypeComboBox->currentText() << "\n\n";
+            out << ui->resultTextEdit->toPlainText();
+            file.close();
+            ui->resultTextEdit->append("日志已成功保存至 " + fileName);
+        } else {
+            ui->resultTextEdit->append("无法保存日志文件。");
+        }
+    }
 }
 
 void PortScannerWindow::populateNetworkInterfaces()
@@ -90,7 +121,7 @@ void PortScannerWindow::populateNetworkInterfaces()
     char errbuf[PCAP_ERRBUF_SIZE];
 
     if (pcap_findalldevs(&alldevs, errbuf) == -1) {
-        qDebug() << "Error in pcap_findalldevs: " << errbuf;
+        qDebug() << "接口获取错误，错误原因: " << errbuf;
         return;
     }
 
@@ -110,18 +141,28 @@ void PortScannerWindow::on_startButton_clicked()
     selectedInterface = ui->interfaceComboBox->currentText();
 
     if (ipAddress.isEmpty() || startPort <= 0 || endPort <= 0 || startPort > endPort) {
-        ui->resultTextEdit->append("错误输入");
+        ui->resultTextEdit->append("错误输入，请检查输入内容~");
         return;
     }
+
+    threadNum = ui->threadNumSpinBox->value();
+    tcpDelay = ui->tcpDelaySpinBox->value();
 
     // 初始化
     ui->resultTextEdit->clear();
     currentPort = startPort;
     totalPorts = endPort - startPort + 1;
-    activeScans = 0;
+    activeScans = 0; // 活动扫描数
+    openPortNum = 0; // 开放端口数
+    udpFilteredPortNum = 0; // UDP Filtered 端口数
 
-    ui->resultTextEdit->append("正在扫描...");
-    for (int i = 0; i < 40 && currentPort <= endPort; ++i) {
+    QString startTime = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm");
+    ui->resultTextEdit->append("Starting XScanner at   " + startTime);
+    ui->resultTextEdit->append("\nPORT           STATE         SERVICE");
+
+    timer.start(); // 扫描计时器
+
+    for (int i = 0; i < threadNum && currentPort <= endPort; ++i) {
         startPortScan();
     }
 }
@@ -132,10 +173,11 @@ void PortScannerWindow::startPortScan()
         int port = currentPort++;
         activeScans++;
 
-        PortScannerWorker *worker = new PortScannerWorker(ipAddress, port, scanType, selectedInterface, this);
+        PortScannerWorker *worker = new PortScannerWorker(ipAddress, port, scanType, selectedInterface, this); //扫描器核心逻辑
         QThread *thread = new QThread;
         worker->moveToThread(thread);
 
+        // 线程管理
         connect(thread, &QThread::started, worker, &PortScannerWorker::startScan);
         connect(worker, &PortScannerWorker::portScanFinished, this, &PortScannerWindow::handlePortScanResult);
         connect(worker, &PortScannerWorker::portScanFinished, thread, &QThread::quit);
@@ -143,6 +185,10 @@ void PortScannerWindow::startPortScan()
         connect(thread, &QThread::finished, thread, &QThread::deleteLater);
 
         thread->start();
+
+        if (activeScans % threadNum == 0 && scanType == PortScannerWindow::UDPScan) {
+            QThread::msleep(5); // 设置延时
+        }
     }
 }
 
@@ -151,17 +197,20 @@ void PortScannerWindow::handlePortScanResult(const QString &ip, int port, bool i
     activeScans--;
 
     if (isOpen) {
-        if (isFiltered) {
+
+        QString result;
+
+        if (isFiltered && scanType == PortScannerWindow::UDPScan) {
+            result = QString("%1/udp").arg(port).leftJustified(10, ' ') + QString("open|filtered").leftJustified(15, ' ') + service.leftJustified(10, ' ');
             udpFilteredPortNum++;
-            //ui->resultTextEdit->append(QString("Port %1 is open|filtered (%2)").arg(port).arg(service));
         } else {
-            openPortNum++;
-            ui->resultTextEdit->append(QString("Port %1 is open / service: (%2)").arg(port).arg(service));
+            result = QString("%1/tcp").arg(port).leftJustified(15, ' ') + QString("open").leftJustified(15, ' ') + service.leftJustified(10, ' ');
         }
-    } else {
-        //ui->resultTextEdit->append(QString("Port %1 is closed (%2)").arg(port).arg(service));
+        ui->resultTextEdit->append(result);
+        openPortNum++;
     }
 
+    // 更新进度条
     int progress = ((currentPort - startPort) * 100) / totalPorts;
     updateProgress(progress);
 
@@ -170,8 +219,13 @@ void PortScannerWindow::handlePortScanResult(const QString &ip, int port, bool i
     }
 
     if (activeScans == 0 && currentPort > endPort) {
-        if (scanType == PortScannerWindow::UDPScan) ui->resultTextEdit->append(QString("%1 ports is open|filtered (%2)").arg(udpFilteredPortNum).arg(service));
-        ui->resultTextEdit->append(QString("端口扫描已完成: There are %1 ports open").arg(openPortNum));
+        double elapsed = timer.elapsed();
+        if (scanType == PortScannerWindow::UDPScan) {
+            ui->resultTextEdit->append(QString("Not shown: %1 closed udp ports").arg(totalPorts - udpFilteredPortNum));
+            ui->resultTextEdit->append(QString("\n共有 %1 个端口开放\n本次扫描耗时 %2 s").arg(openPortNum).arg(elapsed/1000));
+        } else {
+            ui->resultTextEdit->append(QString("\n共有 %1 个端口开放\n本次扫描耗时 %2 s").arg(openPortNum).arg(elapsed/1000));
+        }
     }
 }
 
@@ -182,9 +236,10 @@ void PortScannerWindow::updateProgress(int value)
 
 QString PortScannerWindow::identifyService(int port)
 {
-    return commonPorts.value(port, "tcp?");
+    return commonPorts.value(port, "tcp"); // 暂时默认未知服务为 tcp
 }
 
+// **扫描器核心：处理器**
 PortScannerWorker::PortScannerWorker(const QString &ip, int port, PortScannerWindow::ScanType scanType, const QString &selectedInterface, PortScannerWindow *scannerWindow, QObject *parent)
     : QObject(parent), ipAddress(ip), port(port), scanType(scanType), selectedInterface(selectedInterface), scannerWindow(scannerWindow)
 {
@@ -207,6 +262,7 @@ unsigned short PortScannerWorker::checksum(void *b, int len) {
     return result;
 }
 
+// 创建 TCP_SYN 报文
 void PortScannerWorker::create_syn_packet(char *packet, struct sockaddr_in *target, struct sockaddr_in *source) {
     struct ip *iph = (struct ip *)packet;
     struct tcphdr *tcph = (struct tcphdr *)(packet + sizeof(struct ip));
@@ -249,6 +305,7 @@ void PortScannerWorker::create_syn_packet(char *packet, struct sockaddr_in *targ
     free(pseudogram);
 }
 
+// 创建 TCP_ACK 报文
 void PortScannerWorker::create_ack_packet(char *packet, struct sockaddr_in *target, struct sockaddr_in *source) {
     struct ip *iph = (struct ip *)packet;
     struct tcphdr *tcph = (struct tcphdr *)(packet + sizeof(struct ip));
@@ -298,13 +355,12 @@ bool PortScannerWorker::send_packet(const char *packet, int packet_len, struct s
     int i = 0;
     char errbuf[PCAP_ERRBUF_SIZE];
 
-    // Retrieve the device list on the local machine
     if (pcap_findalldevs(&alldevs, errbuf) == -1) {
-        qDebug() << "Error in pcap_findalldevs: " << errbuf;
+        qDebug() << "网络接口获取错误: " << errbuf;
         return false;
     }
 
-    // Find the selected device
+    // 获取选中的网络接口
     pcap_if_t *device = nullptr;
     for (d = alldevs; d; d = d->next) {
         if (selectedInterface == d->name) {
@@ -314,35 +370,31 @@ bool PortScannerWorker::send_packet(const char *packet, int packet_len, struct s
     }
 
     if (device == nullptr) {
-        qDebug() << "No matching device found!";
+        qDebug() << "找不到所选网络接口";
         pcap_freealldevs(alldevs);
         return false;
     }
 
     pcap_t *handle;
-    // Open the adapter
     if ((handle = pcap_open_live(device->name, 65536, 1, 1000, errbuf)) == NULL) {
-        qDebug() << "Unable to open the adapter. " << device->name << " is not supported by WinPcap";
+        qDebug() << "无法打开 adapter" << device->name << " 不支持 WinPcap";
         pcap_freealldevs(alldevs);
         return false;
     }
 
-    // Send down the packet
     if (pcap_sendpacket(handle, (const u_char *)packet, packet_len) != 0) {
-        qDebug() << "Error sending the packet: " << pcap_geterr(handle);
+        qDebug() << "数据包发送失败: " << pcap_geterr(handle);
         pcap_freealldevs(alldevs);
         return false;
     }
 
-    bool result = receive_response(handle, target);
-
-    // Close the handle
+    bool result = receive_response(handle, target); // 接收响应报文
     pcap_close(handle);
     pcap_freealldevs(alldevs);
     return result;
 }
 
-QString PortScannerWorker::getLocalIPAddress() {
+QString PortScannerWorker::getLocalIPAddress() { //获取本地 IP 地址
     const QHostAddress &localhost = QHostAddress(QHostAddress::LocalHost);
     for (const QHostAddress &address : QNetworkInterface::allAddresses()) {
         if (address.protocol() == QAbstractSocket::IPv4Protocol && address != localhost)
@@ -359,11 +411,10 @@ bool PortScannerWorker::receive_response(pcap_t *handle, struct sockaddr_in *tar
 
     while ((res = pcap_next_ex(handle, &header, &pkt_data)) >= 0) {
         if (res == 0) {
-            // Timeout elapsed
             continue;
         }
 
-        struct ip *iph = (struct ip *)(pkt_data + 14); // Skip Ethernet header
+        struct ip *iph = (struct ip *)(pkt_data + 14); // 跳过接口头部分，直接解析 TCP 头
         struct tcphdr *tcph = (struct tcphdr *)((u_char *)iph + (iph->ip_hl * 4));
 
         if (iph->ip_src.s_addr == target->sin_addr.s_addr && tcph->th_dport == htons(12345)) {
@@ -374,18 +425,17 @@ bool PortScannerWorker::receive_response(pcap_t *handle, struct sockaddr_in *tar
     }
 
     if (res == -1) {
-        qDebug() << "Error reading the packets: " << pcap_geterr(handle);
+        qDebug() << "报文读取失败: " << pcap_geterr(handle);
     }
 
     return false;
 }
 
 bool PortScannerWorker::decode_icmp_response(char *buffer, int packet_size, DECODE_RESULT &decode_result) {
-    // Decode the ICMP response
     IP_HEADER *ip_header = (IP_HEADER *)buffer;
     int ip_header_len = ip_header->hdr_len * 4;
     if (packet_size < (int)(ip_header_len + sizeof(icmp_header))) {
-        qDebug() << "Error: packet size too short";
+        qDebug() << "Error: 报文长度过短";
         return false;
     }
 
@@ -398,120 +448,99 @@ bool PortScannerWorker::decode_icmp_response(char *buffer, int packet_size, DECO
     return (icmp_hdr->type == 3 && icmp_hdr->code == 3);
 }
 
-bool PortScannerWorker::udp_receive_response(SOCKET sock, struct sockaddr_in *target, bool &isFiltered) {
-    char buffer[4096];
-    struct sockaddr_in from;
-    int fromlen = sizeof(from);
+bool PortScannerWorker::udp_receive_response(QUdpSocket &udpSocket, const QHostAddress &target, quint16 targetPort) {
+    // 等待响应
+    if (udpSocket.waitForReadyRead(1500)) {
+        while (udpSocket.hasPendingDatagrams()) {
+            QByteArray response;
+            QHostAddress sender;
+            quint16 senderPort;
 
-    fd_set readfds;
-    FD_ZERO(&readfds);
-    FD_SET(sock, &readfds);
+            response.resize(udpSocket.pendingDatagramSize());
+            udpSocket.readDatagram(response.data(), response.size(), &sender, &senderPort);
 
-    struct timeval timeout;
-    timeout.tv_sec = 3;
-    timeout.tv_usec = 0;
-
-    if (select(0, &readfds, NULL, NULL, &timeout) > 0) {
-        int bytes_received = recvfrom(sock, buffer, sizeof(buffer), 0, (struct sockaddr *)&from, &fromlen);
-        if (bytes_received > 0) {
-            qDebug() << "Received ICMP message. Raw data:" << QByteArray(buffer, bytes_received).toHex();
-            DECODE_RESULT decode_result;
-            if (decode_icmp_response(buffer, bytes_received, decode_result)) {
-                if (decode_result.dwIPaddr.s_addr == target->sin_addr.s_addr && decode_result.port == target->sin_port) {
-                    qDebug() << "Received ICMP port unreachable message for port" << ntohs(target->sin_port);
-                    isFiltered = false;
-                    return false;
-                } else {
-                    qDebug() << "Received ICMP message from different address or port.";
-                }
+            if (sender == target && senderPort == targetPort) {
+                qDebug() << "收到响应：" << response.toHex();
+                return true;
             } else {
-                qDebug() << "Received unexpected ICMP message.";
-                isFiltered = true;
+                IP_HEADER *ipHeader = (IP_HEADER *)response.data();
+                if (ipHeader->protocol == 1) { // ICMP协议
+                    icmp_header *icmpHeader = (icmp_header *)(response.data() + ipHeader->hdr_len * 4);
+                    if (icmpHeader->type == 3 && icmpHeader->code == 3) {
+                        qDebug() << "端口不可达：" << target.toString() << targetPort;
+                        return false;
+                    }
+                }
             }
-        } else {
-            qDebug() << "No response received for UDP packet.";
-            isFiltered = true;
         }
     } else {
-        qDebug() << "UDP select timeout.";
+        qDebug() << "未收到响应，可能端口开放";
         isFiltered = true;
+        return true;
     }
-    return true;
+    return false;
 }
 
 void PortScannerWorker::startScan()
 {
     bool isOpen = false;
-    bool isFiltered = false;
+    isFiltered = false;
 
     QHostAddress address(ipAddress);
     if (address.isNull()) {
-        emit portScanFinished(ipAddress, port, false, "Invalid IP", isFiltered);
+        emit portScanFinished(ipAddress, port, false, "无效 IP", isFiltered);
         return;
     }
+    qDebug() << "正在处理 IP:" << address.toString();
 
-    qDebug() << "Resolved IP Address:" << address.toString();
+    switch (scanType) {
+        case PortScannerWindow::UDPScan: { // UDP 扫描
+            QUdpSocket udpSocket;
+            if (!udpSocket.bind(QHostAddress::Any, 0)) { // 绑定到一个临时端口
+                qDebug() << "UDP 绑定失败：" << udpSocket.errorString();
+                break;
+            }
 
-    if (scanType == PortScannerWindow::UDPScan) {
-        SOCKET sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-        if (sock == INVALID_SOCKET) {
-            qDebug() << "Failed to create UDP socket, error:" << WSAGetLastError();
-            emit portScanFinished(ipAddress, port, false, "UDP Socket Error", isFiltered);
-            return;
+            QByteArray data = "Test Data";
+            qint64 bytesSent = udpSocket.writeDatagram(data, address, port);
+            if (bytesSent == -1) {
+                qDebug() << "发送 UDP 数据包失败：" << udpSocket.errorString();
+            } else {
+                qDebug() << "UDP 数据包已发送到" << address.toString() << "端口" << port;
+                isOpen = udp_receive_response(udpSocket, address, port);
+            }
+            break;
         }
-
-        struct sockaddr_in target;
-        target.sin_family = AF_INET;
-        target.sin_addr.s_addr = inet_addr(ipAddress.toStdString().c_str());
-        target.sin_port = htons(port);
-
-        char data[] = "Test Data";
-        int sent_bytes = sendto(sock, data, sizeof(data), 0, (struct sockaddr *)&target, sizeof(target));
-        if (sent_bytes == SOCKET_ERROR) {
-            qDebug() << "Failed to send UDP packet, error:" << WSAGetLastError();
-            closesocket(sock);
-            emit portScanFinished(ipAddress, port, false, "UDP Send Error", isFiltered);
-            return;
+        case PortScannerWindow::SYNscan: { // SYN 扫描
+            QString localIPAddress = getLocalIPAddress();
+            if (localIPAddress.isEmpty()) {
+                qDebug() << "本地 IP 获取失败";
+                emit portScanFinished(ipAddress, port, false, "Local IP Error", isFiltered);
+                return;
+            }
         }
-
-        qDebug() << "UDP packet sent to" << ipAddress << "port" << port;
-
-        isOpen = udp_receive_response(sock, &target, isFiltered);
-
-        closesocket(sock);
-    } else if (scanType == PortScannerWindow::SYNscan) {
-        QString localIPAddress = getLocalIPAddress();
-        if (localIPAddress.isEmpty()) {
-            qDebug() << "Failed to get local IP address.";
-            emit portScanFinished(ipAddress, port, false, "Local IP Error", isFiltered);
-            return;
+        case PortScannerWindow::ACKscan: {
+            // ACK 扫描的逻辑
+            //break;
         }
-
-        struct sockaddr_in source, target;
-        source.sin_family = AF_INET;
-        source.sin_addr.s_addr = inet_addr(localIPAddress.toStdString().c_str());
-        target.sin_family = AF_INET;
-        target.sin_addr.s_addr = inet_addr(ipAddress.toStdString().c_str());
-        target.sin_port = htons(port);
-
-        char packet[4096];
-        memset(packet, 0, 4096);
-        create_syn_packet(packet, &target, &source);
-
-        if (send_packet(packet, sizeof(struct ip) + sizeof(struct tcphdr), &target)) {
-            qDebug() << "SYN packet sent successfully.";
-            isOpen = true;
-        } else {
-            qDebug() << "Failed to send SYN packet.";
+        case PortScannerWindow::FINscan: {
+            // FIN 扫描的逻辑
+            //break;
         }
-    } else {
-        QTcpSocket socket;
-        socket.connectToHost(address, port);
-        if (socket.waitForConnected(100)) {
-            isOpen = true;
-            socket.disconnectFromHost();
+        case PortScannerWindow::QuickScan: {
+
+            //break;
         }
-        socket.close();
+        default: { // TCP 全连接扫描
+            QTcpSocket socket;
+            socket.connectToHost(address, port);
+            if (socket.waitForConnected(scannerWindow->getTcpDelay())) {
+                isOpen = true;
+                socket.disconnectFromHost();
+            }
+            socket.close();
+            break;
+        }
     }
 
     QString service = isOpen ? scannerWindow->identifyService(port) : "";
