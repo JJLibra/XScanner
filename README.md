@@ -12,10 +12,10 @@
     <a target="_blank" href="https://github.com/JJLibra">
       <img style="display:inline-block;margin:0.2em;" alt="Author" src="https://img.shields.io/badge/Author-Junjie Li-blue.svg?logo=autoit&style=flat">
     </a>
-    <a target="_blank" href="https://github.com/JJLibra/Astar">
+    <a target="_blank" href="https://github.com/JJLibra/XScanner">
       <img style="display:inline-block;margin:0.2em;" alt="GitHub Repo stars" src="https://img.shields.io/github/stars/JJLibra/XScanner?style=social">
     </a>
-    <a target="_blank" href="https://github.com/JJLibra/Astar">
+    <a target="_blank" href="https://github.com/JJLibra/XScanner">
       <img style="display:inline-block;margin:0.2em;" alt="Qt" src="https://img.shields.io/badge/Framework-Qt-green.svg?logo=Qt&style=flat">
     </a>
 </p>
