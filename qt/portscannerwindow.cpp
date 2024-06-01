@@ -52,7 +52,7 @@ struct pseudo_header {
 #define TH_URG  0x20
 
 PortScannerWindow::PortScannerWindow(QWidget *parent)
-    : QMainWindow(parent), ui(new Ui::PortScannerWindow), activeScans(0), threadNum(50)
+    : QMainWindow(parent), ui(new Ui::PortScannerWindow), activeScans(0), threadNum(50), tcpDelay(100)
 {
     ui->setupUi(this);
 
@@ -80,6 +80,7 @@ PortScannerWindow::PortScannerWindow(QWidget *parent)
     commonPorts.insert(8080, "HTTP-Proxy");
 
     ui->threadNumSpinBox->setValue(threadNum);
+    ui->tcpDelaySpinBox->setValue(tcpDelay);
 
     populateNetworkInterfaces(); // 查找可使用的网络接口
 }
@@ -87,6 +88,10 @@ PortScannerWindow::PortScannerWindow(QWidget *parent)
 PortScannerWindow::~PortScannerWindow()
 {
     delete ui;
+}
+
+int PortScannerWindow::getTcpDelay() const {
+    return tcpDelay;
 }
 
 void PortScannerWindow::on_saveLogButton_clicked()
@@ -139,6 +144,9 @@ void PortScannerWindow::on_startButton_clicked()
         ui->resultTextEdit->append("错误输入，请检查输入内容~");
         return;
     }
+
+    threadNum = ui->threadNumSpinBox->value();
+    tcpDelay = ui->tcpDelaySpinBox->value();
 
     // 初始化
     ui->resultTextEdit->clear();
@@ -520,7 +528,7 @@ void PortScannerWorker::startScan()
         default: { // TCP 全连接扫描
             QTcpSocket socket;
             socket.connectToHost(address, port);
-            if (socket.waitForConnected(100)) {
+            if (socket.waitForConnected(scannerWindow->getTcpDelay())) {
                 isOpen = true;
                 socket.disconnectFromHost();
             }

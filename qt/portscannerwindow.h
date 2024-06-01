@@ -44,6 +44,7 @@ private slots:
 private:
     Ui::PortScannerWindow *ui;
     void startPortScan();
+    int getTcpDelay() const;
 
     QString ipAddress;
     int startPort;
@@ -52,6 +53,7 @@ private:
     int totalPorts;
     int activeScans;
     int threadNum;
+    int tcpDelay;
     QMap<int, QString> commonPorts;
     ScanType scanType;
     QString selectedInterface;
@@ -59,6 +61,8 @@ private:
     int openPortNum = 0;
     QList<int> commonPortList; // 常见端口列表
     QElapsedTimer timer;
+
+    friend class PortScannerWorker;
 };
 
 class PortScannerWorker : public QObject
