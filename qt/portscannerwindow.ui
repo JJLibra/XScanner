@@ -100,11 +100,6 @@
             </item>
             <item>
              <property name="text">
-              <string>Full Scan</string>
-             </property>
-            </item>
-            <item>
-             <property name="text">
               <string>TCP Scan</string>
              </property>
             </item>
