@@ -55,6 +55,31 @@
           </item>
          </layout>
         </item>
+        <item>
+         <layout class="QHBoxLayout">
+          <item>
+           <widget class="QLabel">
+            <property name="text">
+             <string>扫描方式:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="scanMethodComboBox">
+            <item>
+             <property name="text">
+              <string>Ping</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>ARP</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+         </layout>
+        </item>
        </layout>
       </item>
       <item>

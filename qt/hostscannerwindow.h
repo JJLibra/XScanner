@@ -56,6 +56,10 @@ private:
     QMutex mutex;
 
     void startPing();
+    void startARPScan();
+    void handleARPScan();
+    void handleARPScanFinished(int exitCode, QProcess::ExitStatus exitStatus);
+    void startPingForARP();
 };
 
 #endif // HOSTSCANNERWINDOW_H
