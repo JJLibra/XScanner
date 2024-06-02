@@ -46,6 +46,9 @@ private:
     void startPortScan();
     int getTcpDelay() const;
 
+    QMap<int, QString>::const_iterator commonPortsIterator;
+    int scannedPortsCount;  // 用于跟踪已经扫描的端口数量
+
     QString ipAddress;
     int startPort;
     int endPort;

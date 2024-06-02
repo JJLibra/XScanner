@@ -52,7 +52,7 @@ struct pseudo_header {
 #define TH_URG  0x20
 
 PortScannerWindow::PortScannerWindow(QWidget *parent)
-    : QMainWindow(parent), ui(new Ui::PortScannerWindow), activeScans(0), threadNum(50), tcpDelay(100)
+    : QMainWindow(parent), ui(new Ui::PortScannerWindow), activeScans(0), threadNum(50), tcpDelay(100), commonPortsIterator(commonPorts.constEnd()), scannedPortsCount(0)
 {
     ui->setupUi(this);
     ui->progressBar->setValue(0);
@@ -153,10 +153,11 @@ void PortScannerWindow::on_startButton_clicked()
     // 初始化
     ui->resultTextEdit->clear();
     currentPort = startPort;
-    totalPorts = endPort - startPort + 1;
+    totalPorts = (scanType == QuickScan) ? commonPorts.size() : (endPort - startPort + 1);
     activeScans = 0; // 活动扫描数
     openPortNum = 0; // 开放端口数
     udpFilteredPortNum = 0; // UDP Filtered 端口数
+    scannedPortsCount = 0; // 初始化已经扫描的端口数量
 
     QString startTime = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm");
     ui->resultTextEdit->append("Starting XScanner at   " + startTime);
@@ -164,32 +165,61 @@ void PortScannerWindow::on_startButton_clicked()
 
     timer.start(); // 扫描计时器
 
-    for (int i = 0; i < threadNum && currentPort <= endPort; ++i) {
-        startPortScan();
+    if (scanType == QuickScan) { // 只扫描列表中的常见端口
+        commonPortsIterator = commonPorts.constBegin();
+        for (int i = 0; i < threadNum && commonPortsIterator != commonPorts.constEnd(); ++i) {
+            startPortScan();
+        }
+    } else {
+        for (int i = 0; i < threadNum && currentPort <= endPort; ++i) {
+            startPortScan();
+        }
     }
 }
 
 void PortScannerWindow::startPortScan()
 {
-    if (currentPort <= endPort) {
-        int port = currentPort++;
-        activeScans++;
+    if (scanType == QuickScan) {
+        if (commonPortsIterator != commonPorts.constEnd()) {
+            int port = commonPortsIterator.key();
+            ++commonPortsIterator;
+            ++scannedPortsCount;
+            activeScans++;
 
-        PortScannerWorker *worker = new PortScannerWorker(ipAddress, port, scanType, selectedInterface, this); //扫描器核心逻辑
-        QThread *thread = new QThread;
-        worker->moveToThread(thread);
+            PortScannerWorker *worker = new PortScannerWorker(ipAddress, port, scanType, selectedInterface, this); //扫描器核心逻辑
+            QThread *thread = new QThread;
+            worker->moveToThread(thread);
 
-        // 线程管理
-        connect(thread, &QThread::started, worker, &PortScannerWorker::startScan);
-        connect(worker, &PortScannerWorker::portScanFinished, this, &PortScannerWindow::handlePortScanResult);
-        connect(worker, &PortScannerWorker::portScanFinished, thread, &QThread::quit);
-        connect(worker, &PortScannerWorker::portScanFinished, worker, &PortScannerWorker::deleteLater);
-        connect(thread, &QThread::finished, thread, &QThread::deleteLater);
+            // 线程管理
+            connect(thread, &QThread::started, worker, &PortScannerWorker::startScan);
+            connect(worker, &PortScannerWorker::portScanFinished, this, &PortScannerWindow::handlePortScanResult);
+            connect(worker, &PortScannerWorker::portScanFinished, thread, &QThread::quit);
+            connect(worker, &PortScannerWorker::portScanFinished, worker, &PortScannerWorker::deleteLater);
+            connect(thread, &QThread::finished, thread, &QThread::deleteLater);
 
-        thread->start();
+            thread->start();
+        }
+    } else {
+        if (currentPort <= endPort) {
+            int port = currentPort++;
+            activeScans++;
 
-        if (activeScans % threadNum == 0 && scanType == PortScannerWindow::UDPScan) {
-            QThread::msleep(5); // 设置延时
+            PortScannerWorker *worker = new PortScannerWorker(ipAddress, port, scanType, selectedInterface, this); //扫描器核心逻辑
+            QThread *thread = new QThread;
+            worker->moveToThread(thread);
+
+            // 线程管理
+            connect(thread, &QThread::started, worker, &PortScannerWorker::startScan);
+            connect(worker, &PortScannerWorker::portScanFinished, this, &PortScannerWindow::handlePortScanResult);
+            connect(worker, &PortScannerWorker::portScanFinished, thread, &QThread::quit);
+            connect(worker, &PortScannerWorker::portScanFinished, worker, &PortScannerWorker::deleteLater);
+            connect(thread, &QThread::finished, thread, &QThread::deleteLater);
+
+            thread->start();
+
+            if (activeScans % threadNum == 0 && scanType == PortScannerWindow::UDPScan) {
+                QThread::msleep(5); // 设置延时
+            }
         }
     }
 }
@@ -199,9 +229,7 @@ void PortScannerWindow::handlePortScanResult(const QString &ip, int port, bool i
     activeScans--;
 
     if (isOpen) {
-
         QString result;
-
         if (isFiltered && scanType == PortScannerWindow::UDPScan) {
             result = QString("%1/udp").arg(port).leftJustified(10, ' ') + QString("open|filtered").leftJustified(15, ' ') + service.leftJustified(10, ' ');
             udpFilteredPortNum++;
@@ -213,20 +241,31 @@ void PortScannerWindow::handlePortScanResult(const QString &ip, int port, bool i
     }
 
     // 更新进度条
-    int progress = ((currentPort - startPort) * 100) / totalPorts;
+    int progress;
+    if (scanType == QuickScan) {
+        progress = (scannedPortsCount * 100) / totalPorts;
+    } else {
+        progress = ((currentPort - startPort) * 100) / totalPorts;
+    }
     updateProgress(progress);
 
-    if (currentPort <= endPort) {
-        startPortScan();
+    if (scanType == QuickScan) {
+        if (commonPortsIterator != commonPorts.constEnd()) {
+            startPortScan();
+        }
+    } else {
+        if (currentPort <= endPort) {
+            startPortScan();
+        }
     }
 
-    if (activeScans == 0 && currentPort > endPort) {
+    if (activeScans == 0 && ((scanType != QuickScan) || (commonPortsIterator == commonPorts.constEnd())) && (currentPort > endPort)) {
         double elapsed = timer.elapsed();
         if (scanType == PortScannerWindow::UDPScan) {
             ui->resultTextEdit->append(QString("Not shown: %1 closed udp ports").arg(totalPorts - udpFilteredPortNum));
-            ui->resultTextEdit->append(QString("\n共有 %1 个端口开放\n本次扫描耗时 %2 s").arg(openPortNum).arg(elapsed/1000));
+            ui->resultTextEdit->append(QString("\n共有 %1 个端口开放\n本次扫描耗时 %2 s").arg(openPortNum).arg(elapsed / 1000));
         } else {
-            ui->resultTextEdit->append(QString("\n共有 %1 个端口开放\n本次扫描耗时 %2 s").arg(openPortNum).arg(elapsed/1000));
+            ui->resultTextEdit->append(QString("\n共有 %1 个端口开放\n本次扫描耗时 %2 s").arg(openPortNum).arg(elapsed / 1000));
         }
     }
 }
@@ -514,24 +553,50 @@ void PortScannerWorker::startScan()
             break;
         }
         case PortScannerWindow::SYNscan: { // SYN 扫描
-            QString localIPAddress = getLocalIPAddress();
-            if (localIPAddress.isEmpty()) {
-                qDebug() << "本地 IP 获取失败";
-                emit portScanFinished(ipAddress, port, false, "Local IP Error", isFiltered);
-                return;
+//            QString localIPAddress = getLocalIPAddress();
+//            if (localIPAddress.isEmpty()) {
+//                qDebug() << "本地 IP 获取失败";
+//                emit portScanFinished(ipAddress, port, false, "Local IP Error", isFiltered);
+//                return;
+//            }
+            QTcpSocket socket;
+            socket.connectToHost(address, port);
+            if (socket.waitForConnected(scannerWindow->getTcpDelay())) {
+                isOpen = true;
+                socket.disconnectFromHost();
             }
+            socket.close();
+            break;
         }
         case PortScannerWindow::ACKscan: {
-            // ACK 扫描的逻辑
-            //break;
+            QTcpSocket socket;
+            socket.connectToHost(address, port);
+            if (socket.waitForConnected(scannerWindow->getTcpDelay())) {
+                isOpen = true;
+                socket.disconnectFromHost();
+            }
+            socket.close();
+            break;
         }
         case PortScannerWindow::FINscan: {
-            // FIN 扫描的逻辑
-            //break;
+            QTcpSocket socket;
+            socket.connectToHost(address, port);
+            if (socket.waitForConnected(scannerWindow->getTcpDelay())) {
+                isOpen = true;
+                socket.disconnectFromHost();
+            }
+            socket.close();
+            break;
         }
-        case PortScannerWindow::QuickScan: {
-
-            //break;
+        case PortScannerWindow::QuickScan: { // Quick 扫描：使用 TCP 全连接扫描常见端口
+            QTcpSocket socket;
+            socket.connectToHost(address, port);
+            if (socket.waitForConnected(scannerWindow->getTcpDelay())) {
+                isOpen = true;
+                socket.disconnectFromHost();
+            }
+            socket.close();
+            break;
         }
         default: { // TCP 全连接扫描
             QTcpSocket socket;
