@@ -55,6 +55,8 @@ PortScannerWindow::PortScannerWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::PortScannerWindow), activeScans(0), threadNum(50), tcpDelay(100)
 {
     ui->setupUi(this);
+    ui->progressBar->setValue(0);
+    ui->progressBar->setRange(0, 100);  // 进度条的范围从0到100
 
     // 目前使用常见端口-服务映射表确定端口服务
     commonPorts.insert(21, "FTP");
