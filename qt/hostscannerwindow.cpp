@@ -58,7 +58,6 @@ HostScannerWindow::HostScannerWindow(QWidget *parent)
     totalPings(0)
 {
     ui->setupUi(this);
-    connect(ui->startButton, &QPushButton::clicked, this, &HostScannerWindow::on_startButton_clicked);
     ui->progressBar->setValue(0);
     ui->progressBar->setRange(0, 100);  // 进度条的范围从0到100
 }
