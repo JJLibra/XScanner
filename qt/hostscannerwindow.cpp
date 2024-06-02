@@ -43,10 +43,17 @@ void ARPWorker::startARPScan()
     QProcess *arpProcess = new QProcess(this);
     connect(arpProcess, &QProcess::finished, this, [this, arpProcess](int exitCode, QProcess::ExitStatus exitStatus) {
         QString output = arpProcess->readAllStandardOutput();
+        QString error = arpProcess->readAllStandardError();
+
         qDebug() << "ARP output:" << output; // 添加调试信息，查看ARP命令输出
+        if (!error.isEmpty()) {
+            qDebug() << "ARP error:" << error; // 输出错误信息
+        }
+
         emit arpScanFinished(output);
         arpProcess->deleteLater();
     });
+
     arpProcess->start("arp -a");
 }
 
@@ -112,8 +119,8 @@ void HostScannerWindow::on_startButton_clicked()
             }
         } else if (scanMethod == "ARP") {
             qDebug() << "ARP";
-            ui->resultTextEdit->append("ARP正在开发中...");
-            startARP(); // 开 ARP
+            ui->resultTextEdit->append("ARP扫描正在开发中...");
+            startARP(); // ARP 扫描
         }
     }
 }
@@ -196,6 +203,9 @@ void HostScannerWindow::handleARPResult(const QString &output)
         QString ip = match.captured(1);
         QString mac = match.captured(2);
         QString type = match.captured(3);
+
+        // 打印捕获的条目信息
+        qDebug() << "Matched entry - IP:" << ip << ", MAC:" << mac << ", Type:" << type;
 
         // 只处理类型为“动态”的条目
         if (type == "动态") {
