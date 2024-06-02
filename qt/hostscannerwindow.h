@@ -30,6 +30,20 @@ private:
     QProcess *pingProcess;
 };
 
+class ARPWorker : public QObject
+{
+    Q_OBJECT
+
+public:
+    explicit ARPWorker(QObject *parent = nullptr);
+
+public slots:
+    void startARPScan();
+
+signals:
+    void arpScanFinished(const QString &output);
+};
+
 class HostScannerWindow : public QMainWindow
 {
     Q_OBJECT
@@ -41,6 +55,7 @@ public:
 private slots:
     void on_startButton_clicked();
     void handlePingResult(const QString &ip, bool isAlive);
+    void handleARPResult(const QString &output);
     void checkCompletion();
     void updateProgressBar();
 
@@ -56,10 +71,7 @@ private:
     QMutex mutex;
 
     void startPing();
-    void startARPScan();
-    void handleARPScan();
-    void handleARPScanFinished(int exitCode, QProcess::ExitStatus exitStatus);
-    void startPingForARP();
+    void startARP();
 };
 
 #endif // HOSTSCANNERWINDOW_H

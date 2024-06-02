@@ -34,6 +34,22 @@ void PingWorker::processFinished(int exitCode, QProcess::ExitStatus exitStatus)
     pingProcess->deleteLater();
 }
 
+ARPWorker::ARPWorker(QObject *parent) : QObject(parent)
+{
+}
+
+void ARPWorker::startARPScan()
+{
+    QProcess *arpProcess = new QProcess(this);
+    connect(arpProcess, &QProcess::finished, this, [this, arpProcess](int exitCode, QProcess::ExitStatus exitStatus) {
+        QString output = arpProcess->readAllStandardOutput();
+        qDebug() << "ARP output:" << output; // 添加调试信息，查看ARP命令输出
+        emit arpScanFinished(output);
+        arpProcess->deleteLater();
+    });
+    arpProcess->start("arp -a");
+}
+
 HostScannerWindow::HostScannerWindow(QWidget *parent)
     : QMainWindow(parent),
     ui(new Ui::HostScannerWindow),
@@ -96,7 +112,9 @@ void HostScannerWindow::on_startButton_clicked()
                 startPing(); // 开 ping
             }
         } else if (scanMethod == "ARP") {
-            startARPScan(); // 开 ARP 扫描
+            qDebug() << "ARP";
+            ui->resultTextEdit->append("ARP正在开发中...");
+            startARP(); // 开 ARP
         }
     }
 }
@@ -127,79 +145,6 @@ void HostScannerWindow::startPing()
     }
 }
 
-void HostScannerWindow::startARPScan()
-{
-    for (int i = 0; i < threadsNum && i < ipList.size(); ++i) {
-        startPingForARP(); // 开始多线程ping，目的是填充ARP缓存
-    }
-}
-
-void HostScannerWindow::startPingForARP()
-{
-    if (currentIpIndex < ipList.size()) {
-        QString ip = ipList[currentIpIndex];
-        {
-            QMutexLocker locker(&mutex);
-            currentIpIndex++;
-            activePings++;
-            pendingIps.insert(ip);
-        }
-
-        QThread *thread = new QThread;
-        PingWorker *worker = new PingWorker(ip);
-        worker->moveToThread(thread);
-
-        connect(thread, &QThread::started, worker, &PingWorker::startPing);
-        connect(worker, &PingWorker::pingFinished, this, [this](const QString &ip, bool isAlive) {
-            QMutexLocker locker(&mutex);
-            activePings--;
-            pendingIps.remove(ip);
-
-            if (currentIpIndex < ipList.size()) {
-                startPingForARP();
-            }
-
-            if (activePings == 0) {
-                // All pings are done, now read the ARP cache
-                handleARPScan();
-            }
-        });
-
-        connect(worker, &PingWorker::pingFinished, thread, &QThread::quit);
-        connect(worker, &PingWorker::pingFinished, worker, &PingWorker::deleteLater);
-        connect(thread, &QThread::finished, thread, &QThread::deleteLater);
-
-        thread->start();
-    }
-}
-
-void HostScannerWindow::handleARPScan()
-{
-    QProcess *arpProcess = new QProcess(this);
-    connect(arpProcess, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), this, &HostScannerWindow::handleARPScanFinished);
-    arpProcess->start("arp", QStringList() << "-a");
-}
-
-void HostScannerWindow::handleARPScanFinished(int exitCode, QProcess::ExitStatus exitStatus)
-{
-    QProcess *arpProcess = qobject_cast<QProcess*>(sender());
-    QString output = arpProcess->readAllStandardOutput();
-    QStringList lines = output.split('\n');
-    
-    foreach (const QString &line, lines) {
-        QRegularExpression regex("([0-9]{1,3}\\.){3}[0-9]{1,3}");
-        QRegularExpressionMatch match = regex.match(line);
-        if (match.hasMatch()) {
-            QString ip = match.captured(0);
-            ui->resultTextEdit->append(QString("%1 is alive").arg(ip));
-            aliveHosts.append(ip);
-        }
-    }
-
-    updateProgressBar();  // 更新进度条
-    checkCompletion();
-}
-
 void HostScannerWindow::handlePingResult(const QString &ip, bool isAlive)
 {
     {
@@ -222,6 +167,52 @@ void HostScannerWindow::handlePingResult(const QString &ip, bool isAlive)
     }
 
     checkCompletion();
+}
+
+void HostScannerWindow::startARP()
+{
+    ARPWorker *worker = new ARPWorker();
+    QThread *thread = new QThread;
+    worker->moveToThread(thread);
+
+    connect(thread, &QThread::started, worker, &ARPWorker::startARPScan);
+    connect(worker, &ARPWorker::arpScanFinished, this, &HostScannerWindow::handleARPResult);
+    connect(worker, &ARPWorker::arpScanFinished, thread, &QThread::quit);
+    connect(worker, &ARPWorker::arpScanFinished, worker, &ARPWorker::deleteLater);
+    connect(thread, &QThread::finished, thread, &QThread::deleteLater);
+
+    thread->start();
+}
+
+void HostScannerWindow::handleARPResult(const QString &output)
+{
+    qDebug() << "处理ARP表数据";
+    qDebug() << "arp -a output:" << output; // 打印ARP命令输出
+
+    QRegularExpression regex(R"((\d+\.\d+\.\d+\.\d+)\s+((?:[a-fA-F0-9]{2}-){5}[a-fA-F0-9]{2})\s+(\S+))");
+    QRegularExpressionMatchIterator i = regex.globalMatch(output);
+
+    while (i.hasNext()) {
+        QRegularExpressionMatch match = i.next();
+        QString ip = match.captured(1);
+        QString mac = match.captured(2);
+        QString type = match.captured(3);
+
+        // 只处理类型为“动态”的条目
+        if (type == "动态") {
+            qDebug() << "IP Address:" << ip << "MAC Address:" << mac;
+            ui->resultTextEdit->append(QString("IP Address: %1, MAC Address: %2").arg(ip).arg(mac));
+            aliveHosts.append(ip);
+        }
+    }
+
+    ui->progressBar->setValue(100);  // ARP扫描一次性完成，直接更新进度条
+    ui->resultTextEdit->append("ARP扫描已完成");
+
+    ui->aliveHostsTextEdit->append("以下主机已开启");
+    for (const QString &host : aliveHosts) {
+        ui->aliveHostsTextEdit->append(host);
+    }
 }
 
 void HostScannerWindow::updateProgressBar()
