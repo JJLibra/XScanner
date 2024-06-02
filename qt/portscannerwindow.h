@@ -35,6 +35,7 @@ public:
     };
 
 private slots:
+    void on_stopButton_clicked();
     void on_startButton_clicked();
     void handlePortScanResult(const QString &ip, int port, bool isOpen, const QString &service, bool isFiltered);
     void updateProgress(int value);
@@ -45,6 +46,8 @@ private:
     Ui::PortScannerWindow *ui;
     void startPortScan();
     int getTcpDelay() const;
+
+    bool stopRequested;
 
     QMap<int, QString>::const_iterator commonPortsIterator;
     int scannedPortsCount;  // 用于跟踪已经扫描的端口数量

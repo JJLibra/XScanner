@@ -52,7 +52,7 @@ struct pseudo_header {
 #define TH_URG  0x20
 
 PortScannerWindow::PortScannerWindow(QWidget *parent)
-    : QMainWindow(parent), ui(new Ui::PortScannerWindow), activeScans(0), threadNum(50), tcpDelay(100), commonPortsIterator(commonPorts.constEnd()), scannedPortsCount(0)
+    : QMainWindow(parent), ui(new Ui::PortScannerWindow), activeScans(0), threadNum(50), tcpDelay(100), commonPortsIterator(commonPorts.constEnd()), scannedPortsCount(0), stopRequested(false)
 {
     ui->setupUi(this);
     ui->progressBar->setValue(0);
@@ -94,6 +94,12 @@ PortScannerWindow::~PortScannerWindow()
 
 int PortScannerWindow::getTcpDelay() const {
     return tcpDelay;
+}
+
+void PortScannerWindow::on_stopButton_clicked()
+{
+    stopRequested = true;
+    ui->resultTextEdit->append("扫描已停止。");
 }
 
 void PortScannerWindow::on_saveLogButton_clicked()
@@ -147,6 +153,7 @@ void PortScannerWindow::on_startButton_clicked()
         return;
     }
 
+    stopRequested = false;
     threadNum = ui->threadNumSpinBox->value();
     tcpDelay = ui->tcpDelaySpinBox->value();
 
@@ -179,6 +186,10 @@ void PortScannerWindow::on_startButton_clicked()
 
 void PortScannerWindow::startPortScan()
 {
+    if (stopRequested) {
+        return;
+    }
+
     if (scanType == QuickScan) {
         if (commonPortsIterator != commonPorts.constEnd()) {
             int port = commonPortsIterator.key();
@@ -227,6 +238,10 @@ void PortScannerWindow::startPortScan()
 void PortScannerWindow::handlePortScanResult(const QString &ip, int port, bool isOpen, const QString &service, bool isFiltered)
 {
     activeScans--;
+
+    if (stopRequested) {
+        return;
+    }
 
     if (isOpen) {
         QString result;
@@ -524,6 +539,11 @@ bool PortScannerWorker::udp_receive_response(QUdpSocket &udpSocket, const QHostA
 
 void PortScannerWorker::startScan()
 {
+    if (scannerWindow->stopRequested) {
+        emit portScanFinished(ipAddress, port, false, "", isFiltered);
+        return;
+    }
+
     bool isOpen = false;
     isFiltered = false;
 
